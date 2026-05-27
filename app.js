@@ -323,6 +323,8 @@ const projects       = [...document.querySelectorAll(".project-card")];
 
 let authMode = "login";
 let confirmAction = null;
+let currentUser = null;
+let chatChannel = null;
 
 /* ── I18N APPLY ───────────────────────────────────────────── */
 function t(key) {
@@ -460,6 +462,8 @@ drawerOverlay.addEventListener("click", closeDrawer);
 authBtn.addEventListener("click", () => {
   if (state.authed) {
     state.authed = false;
+    currentUser = null;
+    sbClient.auth.signOut();
     renderIdentity();
     pushNotification(t("notif.logout"));
     return;
@@ -502,6 +506,7 @@ authForm.addEventListener("submit", async event => {
   authMessage.classList.add("auth-message--ok");
 
   state.authed = true;
+  currentUser = result.user;
   renderIdentity();
   pushNotification(t(authMode === "signup" ? "notif.signup" : "notif.login"));
 
@@ -858,20 +863,29 @@ function syncRolePanels() {
 
 document.querySelectorAll(".role-cb").forEach(cb => cb.addEventListener("change", syncRolePanels));
 
-chatForm.addEventListener("submit", event => {
+chatForm.addEventListener("submit", async event => {
   event.preventDefault();
   const text = chatInput.value.trim();
-  if (!text) return;
-  const author = lang === "ko" ? "나" : "You";
-  const msgEl = document.createElement("div");
-  msgEl.className = "chat-msg";
-  msgEl.innerHTML = `<span class="chat-author">${author}</span><p>${text}</p>`;
-  chatLog.appendChild(msgEl);
-  chatLog.scrollTop = chatLog.scrollHeight;
+  if (!text || !activeProjectId) return;
   chatInput.value = "";
-  if (activeProjectId && MOCK_WORKSPACES[activeProjectId]) {
-    MOCK_WORKSPACES[activeProjectId].chat.push({ author, text });
+  chatInput.disabled = true;
+  const username = currentUser?.user_metadata?.display_name
+    || currentUser?.email?.split("@")[0]
+    || (lang === "ko" ? "나" : "You");
+  const { error } = await sbClient.from("chat_messages").insert({
+    project_id: activeProjectId,
+    user_id:    currentUser?.id ?? null,
+    username:   username,
+    content:    text
+  });
+  chatInput.disabled = false;
+  chatInput.focus();
+  if (error) {
+    console.error("[chat] insert failed:", error.message);
+    // Fallback: show message locally so the user isn't left wondering
+    appendChatMsg(username, text);
   }
+  // On success the realtime subscription will append the message
   pushNotification(t("notif.chat"));
 });
 
@@ -922,6 +936,38 @@ const MOCK_WORKSPACES = {
 
 let activeProjectId = null;
 
+/* ── CHAT HELPERS ─────────────────────────────────────────── */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function appendChatMsg(username, content) {
+  const div = document.createElement("div");
+  div.className = "chat-msg";
+  div.innerHTML = `<span class="chat-author">${escapeHtml(username)}</span><p>${escapeHtml(content)}</p>`;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function subscribeChatChannel(projectId) {
+  if (chatChannel) {
+    sbClient.removeChannel(chatChannel);
+    chatChannel = null;
+  }
+  chatChannel = sbClient
+    .channel("chat:" + projectId)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "chat_messages", filter: "project_id=eq." + projectId },
+      payload => { appendChatMsg(payload.new.username || "Guest", payload.new.content); }
+    )
+    .subscribe();
+}
+
 function renderWorkspaceChat(msgs) {
   chatLog.innerHTML = "";
   msgs.forEach(msg => {
@@ -950,19 +996,35 @@ function switchWsTab(tab) {
   document.getElementById("wsPanelCalendar").classList.toggle("hidden", tab !== "calendar");
 }
 
-function loadWorkspace(projectId) {
+async function loadWorkspace(projectId) {
   activeProjectId = projectId;
   history.replaceState(null, "", `#workspace/${projectId}`);
-  const data = MOCK_WORKSPACES[projectId];
-  if (!data) return;
-  document.getElementById("wsProjectTitle").textContent = data.title;
-  renderWorkspaceChat(data.chat);
-  renderWorkspaceEvents(data.events);
+  const mockData = MOCK_WORKSPACES[projectId];
+  document.getElementById("wsProjectTitle").textContent = mockData ? mockData.title : projectId;
+  if (mockData) renderWorkspaceEvents(mockData.events);
+  chatLog.innerHTML = "";
   switchWsTab("chat");
   setScreen("workspace");
+  // Fetch chat history from Supabase
+  const { data: msgs, error } = await sbClient
+    .from("chat_messages")
+    .select("username, content, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true })
+    .limit(100);
+  if (!error && msgs && msgs.length > 0) {
+    msgs.forEach(m => appendChatMsg(m.username || "Guest", m.content));
+  } else if (!error && mockData) {
+    renderWorkspaceChat(mockData.chat);
+  }
+  subscribeChatChannel(projectId);
 }
 
 document.getElementById("wsBackBtn").addEventListener("click", () => {
+  if (chatChannel) {
+    sbClient.removeChannel(chatChannel);
+    chatChannel = null;
+  }
   history.replaceState(null, "", "#mypage");
   setScreen("mypage");
 });
