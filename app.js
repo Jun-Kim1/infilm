@@ -11,7 +11,20 @@ async function signUpUser(email, password, displayName) {
     password,
     options: { data: { display_name: displayName } }
   });
-  return { user: data?.user ?? null, session: data?.session ?? null, error };
+  if (error || !data.user) {
+    return { user: null, session: null, error };
+  }
+  // Insert profile row so user_email is never NULL
+  const { error: profileError } = await sbClient.from("profiles").insert({
+    id:           data.user.id,
+    user_email:   email,
+    display_name: displayName || null
+  });
+  if (profileError) {
+    console.error("[profiles] insert failed:", profileError.message);
+    // Non-fatal — auth succeeded; profile can be repaired later
+  }
+  return { user: data.user, session: data.session ?? null, error: null };
 }
 
 async function signInUser(email, password) {
@@ -284,7 +297,7 @@ const state = {
 /* ── DOM REFERENCES ───────────────────────────────────────── */
 const screens        = [...document.querySelectorAll(".screen")];
 const navItems       = [...document.querySelectorAll(".nav-item")];
-const joinButtons    = [...document.querySelectorAll(".join-btn")];
+const projectList    = document.getElementById("projectList");
 const roleJoinBtns   = [...document.querySelectorAll(".role-join")];
 const notifyDrawer   = document.getElementById("notifyDrawer");
 const drawerOverlay  = document.getElementById("drawerOverlay");
@@ -320,7 +333,7 @@ const chatInput      = document.getElementById("chatInput");
 const chatLog        = document.getElementById("chatLog");
 const roleFilter     = document.getElementById("roleFilter");
 const regionFilter   = document.getElementById("regionFilter");
-const projects       = [...document.querySelectorAll(".project-card")];
+let   projects       = [];   // populated by loadDiscoverProjects()
 
 let authMode = "login";
 let confirmAction = null;
@@ -530,22 +543,22 @@ authForm.addEventListener("submit", async event => {
   }, 1400);
 });
 
-joinButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
-    const card   = btn.closest(".project-card");
-    const projId = card?.dataset.projectId || "";
-    initiateJoin(
-      projId,
-      () => {
-        confirmTitle.textContent = t("confirm.join.title");
-        confirmBody.textContent  = t("confirm.join.body");
-        confirmAction = () => { pushNotification(t("preq.answer.autojoin")); setScreen("mypage"); };
-        confirmDialog.showModal();
-      },
-      () => pushNotification(t("preq.answer.waiting"))
-    );
-  });
+projectList.addEventListener("click", event => {
+  const btn = event.target.closest(".join-btn");
+  if (!btn) return;
+  if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
+  const card   = btn.closest(".project-card");
+  const projId = card?.dataset.projectId || "";
+  initiateJoin(
+    projId,
+    () => {
+      confirmTitle.textContent = t("confirm.join.title");
+      confirmBody.textContent  = t("confirm.join.body");
+      confirmAction = () => { pushNotification(t("preq.answer.autojoin")); setScreen("mypage"); };
+      confirmDialog.showModal();
+    },
+    () => pushNotification(t("preq.answer.waiting"))
+  );
 });
 
 roleJoinBtns.forEach(btn => {
@@ -902,20 +915,80 @@ chatForm.addEventListener("submit", async event => {
 function applyFilters() {
   const role   = roleFilter.value;
   const region = regionFilter.value;
+  projects = [...document.querySelectorAll(".project-card")];
   projects.forEach(p => {
     const rm = role   === "all" || p.dataset.role   === role;
-    const rg = region === "Nationwide"             // 전국 = show all
+    const rg = region === "Nationwide"
              || p.dataset.region === region
-             || p.dataset.region === "Nationwide"; // nationwide projects appear in any region
+             || p.dataset.region === "Nationwide";
     p.style.display = rm && rg ? "flex" : "none";
   });
 }
 roleFilter.addEventListener("change", applyFilters);
 regionFilter.addEventListener("change", applyFilters);
 
+/* ── DISCOVER: load projects from Supabase ───────────────── */
+async function loadDiscoverProjects() {
+  projectList.innerHTML = `<p class="card-loading">${lang === "ko" ? "프로젝트 불러오는 중…" : "Loading projects…"}</p>`;
+
+  const { data, error } = await sbClient
+    .from("projects")
+    .select("id, title, regions, recruitment_details(role_name, headcount, min_age, max_age)")
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  projectList.innerHTML = "";
+
+  if (error || !data || data.length === 0) {
+    projectList.innerHTML = `<p class="card-empty">${lang === "ko" ? "등록된 프로젝트가 없습니다." : "No projects yet."}</p>`;
+    applyFilters();
+    return;
+  }
+
+  data.forEach((proj, idx) => {
+    const roles    = proj.recruitment_details || [];
+    const region   = (proj.regions && proj.regions[0]) || "Nationwide";
+    const isNation = proj.regions && proj.regions.includes("Nationwide");
+    const dataRole = roles[0]?.role_name || "all";
+
+    const tagHtml = roles.slice(0, 3).map(r => {
+      let label = `${r.role_name} ×${r.headcount}`;
+      if (r.min_age && r.max_age) label += ` / ${r.min_age}–${r.max_age}`;
+      return `<span class="tag">${escapeHtml(label)}</span>`;
+    }).join("");
+
+    const regionHtml = (proj.regions || ["Nationwide"]).slice(0, 2).map(rg =>
+      `<span class="tag">${escapeHtml(rg)}</span>`
+    ).join("");
+
+    const card = document.createElement("article");
+    card.className = "project-card";
+    card.dataset.role      = dataRole;
+    card.dataset.region    = isNation ? "Nationwide" : region;
+    card.dataset.projectId = proj.id;
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="card-num">${String(idx + 1).padStart(2, "0")}</span>
+      </div>
+      <h3 class="card-title">${escapeHtml(proj.title)}</h3>
+      <div class="card-meta">
+        <span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          ${escapeHtml(region)}
+        </span>
+      </div>
+      <div class="card-tags">${tagHtml}${regionHtml}</div>
+      <button class="join-btn" data-i18n="card.join">${lang === "ko" ? "참여" : "Join"}</button>
+    `;
+    projectList.appendChild(card);
+  });
+
+  applyFilters();
+}
+
 /* ── INIT ─────────────────────────────────────────────────── */
 applyLang("en");
-applyFilters();
+loadDiscoverProjects();
 
 /* ── WORKSPACE ───────────────────────────────────────────────────────── */
 const MOCK_WORKSPACES = {
