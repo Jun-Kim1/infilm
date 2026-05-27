@@ -3,6 +3,7 @@ const SUPABASE_URL = "https://fexwivtwuxsrjfrkqgam.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8JpAW0UnLFAGErcJw26Zig_5_30AJ1a";
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+console.log("[Supabase] Client initialized →", SUPABASE_URL);
 
 async function signUpUser(email, password, displayName) {
   const { data, error } = await sbClient.auth.signUp({
@@ -411,6 +412,16 @@ function pushNotification(message) {
   renderNotifications();
 }
 
+let _toastTimer = null;
+function showToast(message) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = message;
+  el.classList.add("toast--visible");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove("toast--visible"), 2800);
+}
+
 function renderNotifications() {
   notifyList.innerHTML = "";
   state.notifications.forEach(note => {
@@ -466,6 +477,7 @@ authBtn.addEventListener("click", () => {
     sbClient.auth.signOut();
     renderIdentity();
     pushNotification(t("notif.logout"));
+    showToast(t("notif.logout"));
     return;
   }
   authMode = "login";
@@ -869,13 +881,11 @@ chatForm.addEventListener("submit", async event => {
   if (!text || !activeProjectId) return;
   chatInput.value = "";
   chatInput.disabled = true;
-  const username = currentUser?.user_metadata?.display_name
-    || currentUser?.email?.split("@")[0]
-    || (lang === "ko" ? "나" : "You");
+  const userEmail = currentUser?.email || (lang === "ko" ? "나" : "You");
   const { error } = await sbClient.from("chat_messages").insert({
     project_id: activeProjectId,
     user_id:    currentUser?.id ?? null,
-    username:   username,
+    user_email: userEmail,
     content:    text
   });
   chatInput.disabled = false;
@@ -883,7 +893,7 @@ chatForm.addEventListener("submit", async event => {
   if (error) {
     console.error("[chat] insert failed:", error.message);
     // Fallback: show message locally so the user isn't left wondering
-    appendChatMsg(username, text);
+    appendChatMsg(userEmail, text);
   }
   // On success the realtime subscription will append the message
   pushNotification(t("notif.chat"));
@@ -963,7 +973,7 @@ function subscribeChatChannel(projectId) {
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "chat_messages", filter: "project_id=eq." + projectId },
-      payload => { appendChatMsg(payload.new.username || "Guest", payload.new.content); }
+      payload => { appendChatMsg(payload.new.user_email || "Guest", payload.new.content); }
     )
     .subscribe();
 }
@@ -1008,12 +1018,12 @@ async function loadWorkspace(projectId) {
   // Fetch chat history from Supabase
   const { data: msgs, error } = await sbClient
     .from("chat_messages")
-    .select("username, content, created_at")
+    .select("user_email, content, created_at")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true })
     .limit(100);
   if (!error && msgs && msgs.length > 0) {
-    msgs.forEach(m => appendChatMsg(m.username || "Guest", m.content));
+    msgs.forEach(m => appendChatMsg(m.user_email || "Guest", m.content));
   } else if (!error && mockData) {
     renderWorkspaceChat(mockData.chat);
   }
