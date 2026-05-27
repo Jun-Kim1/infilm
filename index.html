@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InFilm</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ─── TOPBAR ─────────────────────────────────────────────── -->
+  <header class="topbar">
+    <a class="wordmark" href="#">InFilm</a>
+
+    <nav class="top-nav" aria-label="Main navigation">
+      <button class="nav-item active" data-screen="discover" data-i18n="nav.discover">Discover</button>
+      <button class="nav-item" data-screen="create" data-i18n="nav.create">Create</button>
+      <button class="nav-item" data-screen="project" data-i18n="nav.project">Project</button>
+      <button class="nav-item" data-screen="mypage" data-i18n="nav.mypage">My Page</button>
+    </nav>
+
+    <div class="topbar-right">
+      <button class="lang-toggle" id="langToggle" aria-label="Toggle language">KO</button>
+      <button class="icon-btn" id="notifyBtn" aria-label="Notifications">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notify-dot" id="notifyDot"></span>
+      </button>
+      <button class="cta-btn" id="authBtn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        <span id="authBtnText" data-i18n="auth.login">Log in</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ─── MAIN CANVAS ───────────────────────────────────────── -->
+  <main class="canvas">
+
+    <!-- 01 DISCOVER ──────────────────────────────────────────── -->
+    <section class="screen active" id="discover">
+      <div class="screen-header">
+        <div class="screen-meta">
+          <span class="screen-label" data-i18n="discover.label">DISCOVERY</span>
+        </div>
+        <span class="open-count" id="openCount" data-i18n="discover.open">3 open</span>
+      </div>
+
+      <h2 class="display-title"><span data-i18n="discover.title1">Find the right crew</span><br><span data-i18n="discover.title2">without friction</span></h2>
+      <p class="display-sub" data-i18n="discover.sub">Filter by role, region, and production window. Joining requires authentication and clearly communicates policy.</p>
+
+      <div class="filter-row">
+        <label class="filter-label">
+          <span data-i18n="filter.role.label">ROLE</span>
+          <select id="roleFilter">
+            <option value="all" data-i18n="role.all">All roles</option>
+            <option value="Director" data-i18n="role.director">Director</option>
+            <option value="Screenwriter" data-i18n="role.screenwriter">Screenwriter</option>
+            <option value="Editor" data-i18n="role.editor">Editor</option>
+            <option value="Cinematographer" data-i18n="role.cinematographer">Cinematographer</option>
+            <option value="Actor" data-i18n="role.actor">Actor</option>
+            <option value="Composer" data-i18n="role.composer">Composer</option>
+          </select>
+        </label>
+        <label class="filter-label">
+          <span data-i18n="filter.region.label">REGION</span>
+          <select id="regionFilter">
+            <option value="Nationwide" data-i18n="region.nationwide">Nationwide</option>
+            <option value="Seoul" data-i18n="region.seoul">Seoul</option>
+            <option value="Gyeonggi" data-i18n="region.gyeonggi">Gyeonggi</option>
+            <option value="Incheon" data-i18n="region.incheon">Incheon</option>
+            <option value="Gangwon" data-i18n="region.gangwon">Gangwon</option>
+            <option value="Chungbuk" data-i18n="region.chungbuk">Chungbuk</option>
+            <option value="Chungnam" data-i18n="region.chungnam">Chungnam</option>
+            <option value="Daejeon" data-i18n="region.daejeon">Daejeon</option>
+            <option value="Sejong" data-i18n="region.sejong">Sejong</option>
+            <option value="Jeonbuk" data-i18n="region.jeonbuk">Jeonbuk</option>
+            <option value="Jeonnam" data-i18n="region.jeonnam">Jeonnam</option>
+            <option value="Gwangju" data-i18n="region.gwangju">Gwangju</option>
+            <option value="Gyeongbuk" data-i18n="region.gyeongbuk">Gyeongbuk</option>
+            <option value="Gyeongnam" data-i18n="region.gyeongnam">Gyeongnam</option>
+            <option value="Daegu" data-i18n="region.daegu">Daegu</option>
+            <option value="Busan" data-i18n="region.busan">Busan</option>
+            <option value="Ulsan" data-i18n="region.ulsan">Ulsan</option>
+            <option value="Jeju" data-i18n="region.jeju">Jeju</option>
+          </select>
+        </label>
+        <label class="filter-label">
+          <span data-i18n="filter.date.label">RECRUITING UNTIL</span>
+          <input type="date" value="2026-07-25" />
+        </label>
+      </div>
+
+      <div class="project-grid" id="projectList">
+        <article class="project-card" data-role="Editor" data-region="Seoul" data-project-id="glass-corridor">
+          <div class="card-top">
+            <span class="genre-tag thriller" data-i18n="card1.genre">Thriller Short</span>
+            <span class="card-num">01</span>
+          </div>
+          <h3 class="card-title" data-i18n="card1.title">Glass Corridor</h3>
+          <div class="card-meta">
+            <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> <span data-i18n="card1.location">Seoul</span></span>
+            <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span data-i18n="card1.date">Aug 25 – Aug 26</span></span>
+          </div>
+          <div class="card-tags">
+            <span class="tag" data-i18n="card1.tag1">Editor ×2</span>
+            <span class="tag" data-i18n="card1.tag2">Age 21–40</span>
+          </div>
+          <button class="join-btn" data-i18n="card.join">Join</button>
+        </article>
+
+        <article class="project-card" data-role="Actor" data-region="Gyeonggi" data-project-id="warm-static">
+          <div class="card-top">
+            <span class="genre-tag drama" data-i18n="card2.genre">Drama Pilot</span>
+            <span class="card-num">02</span>
+          </div>
+          <h3 class="card-title" data-i18n="card2.title">Warm Static</h3>
+          <div class="card-meta">
+            <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> <span data-i18n="card2.location">Gyeonggi</span></span>
+            <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span data-i18n="card2.date">Sep 03 – Sep 06</span></span>
+          </div>
+          <div class="card-tags">
+            <span class="tag" data-i18n="card2.tag1">Lead actor ×1</span>
+            <span class="tag" data-i18n="card2.tag2">Nationwide</span>
+          </div>
+          <button class="join-btn" data-i18n="card.join">Join</button>
+        </article>
+
+        <article class="project-card" data-role="Composer" data-region="Nationwide" data-project-id="noon-in-black">
+          <div class="card-top">
+            <span class="genre-tag mystery" data-i18n="card3.genre">Mystery Feature</span>
+            <span class="card-num">03</span>
+          </div>
+          <h3 class="card-title" data-i18n="card3.title">Noon in Black</h3>
+          <div class="card-meta">
+            <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> <span data-i18n="card3.location">Nationwide</span></span>
+            <span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span data-i18n="card3.date">Sep 11 – Sep 23</span></span>
+          </div>
+          <div class="card-tags">
+            <span class="tag" data-i18n="card3.tag1">Composer ×1</span>
+            <span class="tag" data-i18n="card3.tag2">Remote</span>
+          </div>
+          <button class="join-btn" data-i18n="card.join">Join</button>
+        </article>
+      </div>
+
+      <p class="footer-hint">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span data-i18n="discover.footer">More projects loading as crews publish their calls</span>
+      </p>
+    </section>
+
+    <!-- 03 CREATE ────────────────────────────────────────────── -->
+    <section class="screen" id="create">
+      <div class="screen-header">
+        <div class="screen-meta">
+          <span class="screen-label" data-i18n="create.label">CREATE PROJECT</span>
+        </div>
+      </div>
+      <h2 class="display-title"><span data-i18n="create.title1">Build your production</span><br><span data-i18n="create.title2">brief</span></h2>
+      <p class="display-sub" data-i18n="create.sub">Define roles, region, and pre-screening. Advanced restrictions on Premium.</p>
+
+      <form class="create-form" id="createForm">
+        <!-- 본인 역할 -->
+        <div class="cf-row">
+          <div class="cf-label"><span data-i18n="create.f.ownrole">Your role</span></div>
+          <div class="cf-control">
+            <select id="ownRole">
+              <option value="" data-i18n="create.f.ownrole.ph">Select a role</option>
+              <option value="director" data-i18n="role.director">Director</option>
+              <option value="assdirector" data-i18n="role.assdirector">Asst. Director</option>
+              <option value="maleactor" data-i18n="role.maleactor">Male Actor</option>
+              <option value="femaleactor" data-i18n="role.femaleactor">Female Actor</option>
+              <option value="filming" data-i18n="role.filming">Filming</option>
+              <option value="music" data-i18n="role.music">Music</option>
+              <option value="editing" data-i18n="role.editing">Editing</option>
+              <option value="script" data-i18n="role.script">Script</option>
+            </select>
+          </div>
+        </div>
+        <!-- 프로젝트 이름 -->
+        <div class="cf-row">
+          <div class="cf-label"><span data-i18n="create.f.title">Project title</span></div>
+          <div class="cf-control">
+            <input id="projectTitle" required placeholder="Ex: Glass Corridor" maxlength="80" data-i18n-ph="create.f.title.ph" />
+          </div>
+        </div>
+        <!-- 프로젝트 내용 -->
+        <div class="cf-row">
+          <div class="cf-label">
+            <span data-i18n="create.f.desc">Project content</span>
+            <span class="cf-char" id="descCount">(0/1000)</span>
+          </div>
+          <div class="cf-control">
+            <textarea id="projectDesc" maxlength="1000" placeholder="Brief, tone, objectives, and collaboration expectations." data-i18n-ph="create.f.desc.ph"></textarea>
+          </div>
+        </div>
+        <!-- 지역 -->
+        <div class="cf-row">
+          <div class="cf-label">
+            <span data-i18n="create.f.region">Region</span>
+            <span class="cf-hint" data-i18n="create.f.region.hint">(max 5)</span>
+          </div>
+          <div class="cf-control">
+            <div class="region-cb-grid">
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="nationwide"><span data-i18n="region.nationwide">Nationwide</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="seoul"><span data-i18n="region.seoul">Seoul</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="gyeonggi"><span data-i18n="region.gyeonggi">Gyeonggi</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="chungnam"><span data-i18n="region.chungnam">Chungnam</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="chungbuk"><span data-i18n="region.chungbuk">Chungbuk</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="gwangju"><span data-i18n="region.gwangju">Gwangju</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="jeju"><span data-i18n="region.jeju">Jeju</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="daejeon"><span data-i18n="region.daejeon">Daejeon</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="sejong"><span data-i18n="region.sejong">Sejong</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="jeonnam"><span data-i18n="region.jeonnam">Jeonnam</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="incheon"><span data-i18n="region.incheon">Incheon</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="busan"><span data-i18n="region.busan">Busan</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="ulsan"><span data-i18n="region.ulsan">Ulsan</span></label>
+              <label class="cb-item"><input type="checkbox" name="proj-region" value="daegu"><span data-i18n="region.daegu">Daegu</span></label>
+            </div>
+          </div>
+        </div>
+        <!-- 모집 분야 -->
+        <div class="cf-row">
+          <div class="cf-label"><span data-i18n="create.f.fields">Recruiting fields</span></div>
+          <div class="cf-control">
+            <div class="role-cb-row">
+              <label class="cb-item"><input type="checkbox" class="role-cb" value="director"><span data-i18n="role.director">Director</span></label>
+              <label class="cb-item"><input type="checkbox" class="role-cb" value="assdirector"><span data-i18n="role.assdirector">Asst. Director</span></label>
+              <label class="cb-item"><input type="checkbox" class="role-cb" value="maleactor"><span data-i18n="role.maleactor">Male Actor</span></label>
+              <label class="cb-item"><input type="checkbox" class="role-cb" value="femaleactor"><span data-i18n="role.femaleactor">Female Actor</span></label>
+              <label class="cb-item"><input type="checkbox" class="role-cb" value="filming"><span data-i18n="role.filming">Filming</span></label>
+              <label class="cb-item"><input type="checkbox" class="role-cb" value="music"><span data-i18n="role.music">Music</span></label>
+              <label class="cb-item"><input type="checkbox" class="role-cb" value="editing"><span data-i18n="role.editing">Editing</span></label>
+              <label class="cb-item"><input type="checkbox" class="role-cb" value="script"><span data-i18n="role.script">Script</span></label>
+            </div>
+            <div id="roleDetails" class="role-details-wrap"></div>
+          </div>
+        </div>
+        <!-- 사전 질문 -->
+        <div class="cf-row">
+          <div class="cf-label">
+            <span data-i18n="create.f.preq">Pre-screen question</span>
+            <span class="cf-hint" data-i18n="create.f.preq.opt">(optional)</span>
+          </div>
+          <div class="cf-control">
+            <div class="preq-setup-row" id="preqSetupRow">
+              <span class="preq-none" data-i18n="preq.none">No question set</span>
+              <button type="button" class="ghost-btn preq-set-btn" id="preqSetBtn" data-i18n="preq.set">Set question</button>
+            </div>
+            <div class="preq-preview hidden" id="preqPreview">
+              <div class="preq-preview-inner">
+                <div class="preq-preview-q" id="preqPreviewQ"></div>
+                <div class="preq-preview-meta" id="preqPreviewMeta"></div>
+              </div>
+              <button type="button" class="micro-btn" id="preqEditBtn" data-i18n="preq.change">Edit</button>
+            </div>
+          </div>
+        </div>
+        <div class="cf-submit">
+          <button class="cta-btn submit-btn" type="submit" data-i18n="create.submit">Publish project</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- 04 PROJECT ───────────────────────────────────────────── -->
+    <section class="screen" id="project">
+      <div class="screen-header">
+        <div class="screen-meta">
+          <span class="screen-label" data-i18n="project.label">PROJECTS</span>
+        </div>
+      </div>
+
+      <!-- ── Stats panel (default when nav is clicked) ────────── -->
+      <div id="projectStatsPanel">
+        <h2 class="display-title">
+          <span data-i18n="project.stats.title1">Platform</span><br>
+          <span data-i18n="project.stats.title2">at a glance</span>
+        </h2>
+        <p class="display-sub" data-i18n="project.stats.sub">Cumulative activity across all InFilm productions.</p>
+
+        <div class="stats-kpi-row">
+          <div class="kpi-card">
+            <span class="kpi-value" id="statProjects">3</span>
+            <span class="kpi-label" data-i18n="stat.projects">Projects</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-value" id="statParticipants">140</span>
+            <span class="kpi-label" data-i18n="stat.participants">Participants</span>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-value" id="statActive">3</span>
+            <span class="kpi-label" data-i18n="stat.active">Recruiting</span>
+          </div>
+        </div>
+
+        <div class="stats-breakdown">
+          <p class="stats-breakdown-label" data-i18n="stat.by.role">By recruitment field</p>
+          <div class="stat-bars" id="roleStatBars"></div>
+        </div>
+      </div>
+
+      <!-- ── Detail panel (shown when viewing a specific project) ─ -->
+      <div id="projectDetailPanel" class="hidden">
+        <div class="project-detail">
+          <div class="detail-main">
+            <span class="genre-tag thriller" id="detailGenre">Thriller Short</span>
+            <h2 class="display-title" id="detailTitle">Glass Corridor</h2>
+            <p class="display-sub" id="detailDesc">A suspense short film with urban interiors, practical effects, and low-light choreography.</p>
+            <p class="detail-meta" id="detailRegion">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Seoul · Recruiting until Sep 12
+            </p>
+          </div>
+          <div class="detail-slots">
+            <p class="slots-label" data-i18n="project.slots.label">Open positions</p>
+            <button class="slot-row role-join" data-role="Editor">
+              <span>Editor</span><span class="slot-count">1 / 2 filled</span>
+            </button>
+            <button class="slot-row role-join" data-role="Lead Actor">
+              <span>Lead Actor</span><span class="slot-count">0 / 1 filled</span>
+            </button>
+            <button class="slot-row role-join" data-role="Composer">
+              <span>Composer</span><span class="slot-count">0 / 1 filled</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 MY PAGE ───────────────────────────────────────────── -->
+    <section class="screen" id="mypage">
+      <div class="screen-header">
+        <div class="screen-meta">
+          <span class="screen-label" data-i18n="mypage.label">MY PAGE</span>
+        </div>
+      </div>
+      <h2 class="display-title" data-i18n="mypage.title">Your projects</h2>
+
+      <div class="mypage-grid">
+        <div class="list-block">
+          <p class="list-label" data-i18n="mypage.created">Created</p>
+          <ul id="createdList">
+            <li class="list-item">
+              <span>Glass Corridor</span>
+              <div class="item-actions">
+                <button class="micro-btn" data-i18n="btn.edit">Edit</button>
+                <button class="micro-btn danger" data-i18n="btn.delete">Delete</button>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div class="list-block">
+          <p class="list-label" data-i18n="mypage.joined">Joined</p>
+          <ul id="joinedList">
+            <li class="list-item joined-card" data-project-id="warm-static">
+              <div class="joined-info">
+                <span class="joined-title">Warm Static</span>
+                <span class="status-pill active" data-i18n="ws.status.active">Active</span>
+              </div>
+              <div class="item-actions">
+                <button class="micro-btn ws-open-btn" data-i18n="ws.open">Workspace</button>
+                <button class="micro-btn danger cancel-join-btn" data-i18n="btn.cancel">Cancel</button>
+              </div>
+            </li>
+            <li class="list-item joined-card" data-project-id="noon-in-black">
+              <div class="joined-info">
+                <span class="joined-title">Noon in Black</span>
+                <span class="status-pill active" data-i18n="ws.status.active">Active</span>
+              </div>
+              <div class="item-actions">
+                <button class="micro-btn ws-open-btn" data-i18n="ws.open">Workspace</button>
+                <button class="micro-btn danger cancel-join-btn" data-i18n="btn.cancel">Cancel</button>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 WORKSPACE ─────────────────────────────────────────── -->
+    <section class="screen" id="workspace">
+      <div class="screen-header">
+        <div class="screen-meta">
+          <button class="back-btn" id="wsBackBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            <span data-i18n="ws.back">My Page</span>
+          </button>
+        </div>
+      </div>
+      <h2 class="display-title" id="wsProjectTitle">Workspace</h2>
+
+      <div class="ws-tabs" id="wsTabs">
+        <button class="ws-tab active" data-tab="chat" data-i18n="ws.tab.chat">Chat</button>
+        <button class="ws-tab" data-tab="calendar" data-i18n="ws.tab.calendar">Calendar</button>
+      </div>
+
+      <!-- Chat panel -->
+      <div class="ws-panel" id="wsPanelChat">
+        <div class="chat-log" id="chatLog"></div>
+        <form class="chat-compose" id="chatForm">
+          <input id="chatInput" placeholder="Write a message…" data-i18n-ph="ws.chat.ph" />
+          <button class="cta-btn" type="submit" data-i18n="ws.chat.send">Send</button>
+        </form>
+      </div>
+
+      <!-- Calendar panel -->
+      <div class="ws-panel hidden" id="wsPanelCalendar">
+        <ul class="event-list" id="eventList"></ul>
+        <form class="event-compose" id="eventForm">
+          <input id="eventDate" type="date" />
+          <input id="eventTitle" placeholder="Event title" data-i18n-ph="ws.event.ph" maxlength="80" />
+          <button class="cta-btn" type="submit" data-i18n="ws.event.add">+ Add</button>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ─── MOBILE BOTTOM NAV ────────────────────────────────── -->
+  <nav class="mobile-nav" aria-label="Navigation">
+    <button class="nav-item mobile-nav-item active" data-screen="discover" data-i18n="nav.discover">Discover</button>
+    <button class="nav-item mobile-nav-item" data-screen="create"   data-i18n="nav.create">Create</button>
+    <button class="nav-item mobile-nav-item" data-screen="project"  data-i18n="nav.project">Project</button>
+    <button class="nav-item mobile-nav-item" data-screen="mypage"   data-i18n="nav.mypage">My Page</button>
+  </nav>
+
+  <!-- ─── NOTIFICATION DRAWER ───────────────────────────────── -->
+  <aside class="drawer" id="notifyDrawer" aria-hidden="true">
+    <div class="drawer-head">
+      <span data-i18n="drawer.title">Notifications</span>
+      <button class="drawer-close" id="closeNotify">✕</button>
+    </div>
+    <ul id="notifyList"></ul>
+  </aside>
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <!-- ─── AUTH MODAL ────────────────────────────────────────── -->
+  <dialog id="authDialog" class="modal">
+    <form id="authForm">
+      <h3 id="authTitle">Log in</h3>
+      <label class="form-field"><span data-i18n="modal.email">Email</span><input type="email" id="authEmail" required /></label>
+      <label class="form-field"><span data-i18n="modal.pass">Password</span><input type="password" id="authPass" required /></label>
+      <label class="form-field hidden" id="signupNameWrap"><span data-i18n="modal.name">Display name</span><input id="authName" /></label>
+      <p id="authMessage" class="auth-message"></p>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="authCancel" data-i18n="modal.cancel">Cancel</button>
+        <button type="submit" class="cta-btn" data-i18n="modal.continue">Continue</button>
+      </div>
+      <button type="button" class="switch-link" id="authSwitch">Need an account? Sign up</button>
+    </form>
+  </dialog>
+
+  <!-- ─── CONFIRM MODAL ─────────────────────────────────────── -->
+  <dialog id="confirmDialog" class="modal">
+    <form method="dialog">
+      <h3 id="confirmTitle">Confirm action</h3>
+      <p id="confirmBody" class="confirm-body"></p>
+      <div class="modal-actions">
+        <button value="cancel" class="ghost-btn" data-i18n="modal.no">No</button>
+        <button value="submit" class="cta-btn" id="confirmYes" data-i18n="modal.yes">Yes, continue</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ─── PRE-QUESTION SETUP DIALOG (admin) ────────────────── -->
+  <dialog id="preqDialog" class="modal preq-modal">
+    <button type="button" class="modal-x-btn" id="preqClose">✕</button>
+    <h3 data-i18n="preq.title">사전 질문 설정</h3>
+    <div class="preq-select-wrap">
+      <div class="csel csel-full" id="preqRequired" data-value="none">
+        <button type="button" class="csel-trigger">
+          <span class="csel-label">모든 지원자 받기</span>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <ul class="csel-panel">
+          <li class="csel-opt csel-selected" data-value="none" data-i18n="preq.opt.none">모든 지원자 받기</li>
+          <li class="csel-opt" data-value="yes" data-i18n="preq.opt.yes">‘네’로 답변한 지원자만 받기</li>
+          <li class="csel-opt" data-value="no"  data-i18n="preq.opt.no">‘아니오’로 답변한 지원자만 받기</li>
+        </ul>
+      </div>
+    </div>
+    <div class="preq-textarea-wrap">
+      <textarea id="preqText" maxlength="100" placeholder="Enter question." data-i18n-ph="preq.ph"></textarea>
+      <span class="preq-count"><span id="preqCount">0</span>/100</span>
+    </div>
+    <div class="preq-modal-actions">
+      <button type="button" class="cta-btn preq-done-btn" id="preqOk" data-i18n="preq.done">완료</button>
+    </div>
+  </dialog>
+
+  <!-- ─── PRE-QUESTION ANSWER DIALOG (applicant) ───────────── -->
+  <dialog id="preqAnswerDialog" class="modal preq-modal">
+    <h3 data-i18n="preq.answer.title">사전 질문</h3>
+    <p class="preq-answer-q" id="preqAnswerQ"></p>
+    <div class="preq-modal-actions preq-answer-actions">
+      <button type="button" class="preq-btn-ok"     id="preqAnswerYes"><span data-i18n="preq.answer.yes">Yes</span></button>
+      <button type="button" class="preq-btn-cancel" id="preqAnswerNo"><span data-i18n="preq.answer.no">No</span></button>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="app.js" charset="utf-8"></script>
+</body>
+</html>
