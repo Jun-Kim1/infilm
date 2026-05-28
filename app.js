@@ -41,7 +41,7 @@ const i18n = {
     "drawer.title": "Notifications",
     "discover.label": "DISCOVERY", "discover.open": "0 open",
     "discover.title1": "Find the right crew", "discover.title2": "without friction",
-    "discover.sub": "Filter by role, region, and production window. Joining requires authentication and clearly communicates policy.",
+    "discover.sub": "Find projects by role, region, and shooting period.",
     "discover.footer": "More projects loading as crews publish their calls",
     "filter.role.label": "ROLE", "filter.region.label": "REGION", "filter.status.label": "STATUS",
     "status.all": "All", "status.open": "Recruiting", "status.closed": "Closed",
@@ -92,7 +92,7 @@ const i18n = {
     "plan.premium.li5": "Calendar, invites, file attachments",
     "create.label": "CREATE PROJECT",
     "create.title1": "Build your production", "create.title2": "brief",
-    "create.sub": "Define roles, region, and pre-screening. Advanced restrictions on Premium.",
+    "create.sub": "Define roles, region, and pre-screening.",
     "create.f.ownrole": "Your role", "create.f.ownrole.ph": "Select a role",
     "create.f.title": "Project title", "create.f.title.ph": "Ex: Glass Corridor",
     "create.f.desc": "Project content",
@@ -218,7 +218,7 @@ const i18n = {
     "plan.premium.li5": "캘린더, 초대, 파일 첨부",
     "create.label": "프로젝트 만들기",
     "create.title1": "프로덕션 브리핑을", "create.title2": "작성하세요",
-    "create.sub": "역할, 지역, 사전 질문을 정의하세요. 고급 기능은 프리미엄 전용입니다.",
+    "create.sub": "역할, 지역, 사전 질문을 정의하세요.",
     "create.f.ownrole": "본인 역할", "create.f.ownrole.ph": "역할 선택",
     "create.f.title": "프로젝트 이름", "create.f.title.ph": "예: Glass Corridor",
     "create.f.desc": "프로젝트 내용",
@@ -822,7 +822,7 @@ function collectFormData() {
       headcount: hcVal === "6+" ? 6 : (parseInt(hcVal) || 1),
       minAge:    (minVal && minVal !== "") ? parseInt(minVal) : null,
       maxAge:    (maxVal && maxVal !== "") ? parseInt(maxVal) : null,
-      career:    dp.querySelector(".dp-career")?.dataset.value || "any"
+      career:    (dp.querySelector(".dp-career")?.dataset.value || "any") !== "any"
     };
   });
 
