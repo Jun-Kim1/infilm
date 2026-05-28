@@ -324,8 +324,6 @@ const authForm       = document.getElementById("authForm");
 const authMessage    = document.getElementById("authMessage");
 const createForm     = document.getElementById("createForm");
 const createdList    = document.getElementById("createdList");
-const detailTitle    = document.getElementById("detailTitle");
-const detailDesc     = document.getElementById("detailDesc");
 const confirmDialog  = document.getElementById("confirmDialog");
 const confirmTitle   = document.getElementById("confirmTitle");
 const confirmBody    = document.getElementById("confirmBody");
@@ -520,15 +518,6 @@ async function showProjectStats() {
   loadRoleStats();
 }
 
-function showProjectDetail(title, desc, closingDate) {
-  detailTitle.textContent = title || "";
-  detailDesc.textContent  = desc  || "";
-  const statusEl = document.getElementById("detailStatus");
-  if (statusEl) statusEl.innerHTML = statusBadgeHtml(closingDate ?? null);
-  document.getElementById("projectStatsPanel").classList.add("hidden");
-  document.getElementById("projectDetailPanel").classList.remove("hidden");
-  setScreen("project");
-}
 
 async function loadProjectDetail(projectId) {
   console.log("[join] Step 1: loadProjectDetail called — projectId:", projectId);
