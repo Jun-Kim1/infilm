@@ -154,7 +154,6 @@ const i18n = {
     "confirm.invite.title": "Invite team member",
     "confirm.invite.body": "Send an invite by email to add a member to this project hub.",
     "notif.created": "Project created successfully.",
-    "notif.joined.default": "You joined Glass Corridor as Editor.",
     "notif.hub.open": "Team assembly complete. Collaboration hub is open.",
     "notif.login": "Logged in successfully.",
     "notif.signup": "Account created. Welcome to InFilm.",
@@ -280,7 +279,6 @@ const i18n = {
     "confirm.invite.title": "멤버 초대",
     "confirm.invite.body": "이메일 초대를 통해 이 프로젝트 허브에 멤버를 추가합니다.",
     "notif.created": "프로젝트가 성공적으로 게시되었습니다.",
-    "notif.joined.default": "Glass Corridor에 에디터로 참여했습니다.",
     "notif.hub.open": "팀 구성이 완료되었습니다. 협업 허브가 열렸습니다.",
     "notif.login": "로그인되었습니다.",
     "notif.signup": "계정이 생성되었습니다. InFilm에 오신 것을 환영합니다.",
@@ -300,10 +298,7 @@ let lang = "en";
 const state = {
   authed: false,
   plan: "Basic",
-  notifications: [
-    { key: "notif.created" },
-    { key: "notif.joined.default" }
-  ]
+  notifications: []
 };
 
 /* ── DOM REFERENCES ───────────────────────────────────────── */
@@ -437,14 +432,19 @@ async function loadMyPage() {
   const joinedEl     = document.getElementById("joinedList");
   const emptyCreated = `<li class="empty-item">${lang === "ko" ? "생성한 프로젝트가 없습니다." : "No projects created."}</li>`;
   const emptyJoined  = `<li class="empty-item">${lang === "ko" ? "참여 중인 프로젝트가 없습니다." : "No projects joined."}</li>`;
-  if (!currentUser) {
+  // Live session check — never rely on potentially stale global
+  const { data: { session } } = await sbClient.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) {
     createdEl.innerHTML = emptyCreated;
     joinedEl.innerHTML  = emptyJoined;
     return;
   }
+  // Keep global in sync with the live session
+  currentUser = session.user;
   const [{ data: created, error: ce }, { data: participations, error: pe }] = await Promise.all([
-    sbClient.from("projects").select("id, title").eq("creator_id", currentUser.id).order("created_at", { ascending: false }),
-    sbClient.from("project_participants").select("project_id").eq("user_id", currentUser.id).order("created_at", { ascending: false })
+    sbClient.from("projects").select("id, title").eq("creator_id", userId).order("created_at", { ascending: false }),
+    sbClient.from("project_participants").select("project_id").eq("user_id", userId).eq("status", "confirmed").order("created_at", { ascending: false })
   ]);
 
   // Second step: fetch project details for each participation row
@@ -518,7 +518,9 @@ async function loadProjectDetail(projectId) {
     const statusEl = document.getElementById("detailStatus");
     if (statusEl) statusEl.innerHTML = statusBadgeHtml(proj.closing_date);
 
-    const regionText = (proj.regions || []).join(" · ") || (lang === "ko" ? "전국" : "Nationwide");
+    const regionText = (proj.regions || [])
+      .map(r => t("region." + r) || r)
+      .join(" · ") || (lang === "ko" ? "전국" : "Nationwide");
     const detailRegionEl = document.getElementById("detailRegion");
     if (detailRegionEl) {
       detailRegionEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(regionText)}`;
@@ -530,10 +532,14 @@ async function loadProjectDetail(projectId) {
       const slotsLabel = lang === "ko" ? "모집 분야" : "Open positions";
       const slotsHtml = roles.length
         ? roles.map(r => {
-            const agePart = (r.min_age && r.max_age) ? ` · ${r.min_age}–${r.max_age}세` : "";
+            const roleName = t("role." + r.role_name) || r.role_name;
+            const agePart = (r.min_age && r.max_age)
+              ? ` · ${r.min_age}–${r.max_age}${lang === "ko" ? "세" : "y.o."}`
+              : "";
+            const countPart = lang === "ko" ? `×${r.headcount}명 모집` : `×${r.headcount} wanted`;
             return `<button class="slot-row role-join" data-role="${escapeHtml(r.role_name)}" data-project-id="${escapeHtml(proj.id)}">
-              <span>${escapeHtml(r.role_name)}${agePart}</span>
-              <span class="slot-count">×${r.headcount}명 모집</span>
+              <span>${escapeHtml(roleName)}${agePart}</span>
+              <span class="slot-count">${countPart}</span>
             </button>`;
           }).join("")
         : `<p class="card-empty">${lang === "ko" ? "모집 분야 없음" : "No open positions"}</p>`;
@@ -579,6 +585,21 @@ function renderIdentity() {
   authBtnText.textContent = state.authed ? t("auth.logout") : t("auth.login");
 }
 
+/* ── CLEAR USER STATE ─────────────────────────────────────── */
+function clearUserState() {
+  state.authed        = false;
+  currentUser         = null;
+  state.notifications = [];
+  // Clear My Page lists so previous user's data never bleeds through
+  const createdEl = document.getElementById("createdList");
+  const joinedEl  = document.getElementById("joinedList");
+  const empty     = `<li class="empty-item">${lang === "ko" ? "로그인이 필요합니다." : "Please log in."}</li>`;
+  if (createdEl) createdEl.innerHTML = empty;
+  if (joinedEl)  joinedEl.innerHTML  = empty;
+  renderIdentity();
+  renderNotifications();
+}
+
 function updateAuthCopy() {
   const isSignup = authMode === "signup";
   authTitle.textContent = isSignup ? t("modal.signup.title") : t("modal.login.title");
@@ -613,14 +634,13 @@ function closeDrawer() {
 closeNotify.addEventListener("click", closeDrawer);
 drawerOverlay.addEventListener("click", closeDrawer);
 
-authBtn.addEventListener("click", () => {
+authBtn.addEventListener("click", async () => {
   if (state.authed) {
-    state.authed = false;
-    currentUser = null;
-    sbClient.auth.signOut();
-    renderIdentity();
-    pushNotification(t("notif.logout"));
-    showToast(t("notif.logout"));
+    const msg = t("notif.logout");
+    clearUserState();
+    await sbClient.auth.signOut();
+    showToast(msg);
+    setScreen("discover");
     return;
   }
   authMode = "login";
@@ -688,60 +708,16 @@ projectList.addEventListener("click", event => {
   if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
   const joinCard = btn.closest(".project-card");
   const projId   = joinCard?.dataset.projectId || "";
-  initiateJoin(
-    projId,
-    () => {
-      confirmTitle.textContent = t("confirm.join.title");
-      confirmBody.textContent  = t("confirm.join.body");
-      confirmAction = async () => {
-        if (currentUser) {
-          const insertPayload = { project_id: projId, user_id: currentUser.id };
-          console.log("[join] inserting project_participants:", insertPayload);
-          const { data: jpData, error } = await sbClient.from("project_participants").insert(insertPayload).select();
-          console.log("[join] insert result → data:", jpData, "error:", error);
-          if (error && error.code !== "23505") console.error("[join]", error.message);
-        }
-        pushNotification(t("preq.answer.autojoin"));
-        await loadMyPage();
-        setScreen("mypage");
-      };
-      confirmDialog.showModal();
-    },
-    () => pushNotification(t("preq.answer.waiting"))
-  );
+  if (projId) joinProject(projId, null);
 });
 
-roleJoinBtns.forEach(btn => {
-  btn.addEventListener("click", () => {
-    if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
-    const roleKey     = "role." + btn.dataset.role.replace("-", "");
-    const roleDisplay = t(roleKey);
-    const projId      = detailTitle.textContent.toLowerCase().replace(/\s+/g, "-");
-    initiateJoin(
-      projId,
-      () => {
-        confirmTitle.textContent = lang === "ko" ? `${roleDisplay}로 참여` : `Join as ${roleDisplay}`;
-        confirmBody.textContent  = t("confirm.join.body");
-        confirmAction = async () => {
-          const msg = lang === "ko"
-            ? `${detailTitle.textContent}에 ${roleDisplay}로 참여했습니다.`
-            : `You joined ${detailTitle.textContent} as ${roleDisplay}.`;
-          if (currentUser) {
-            const insertPayload = { project_id: projId, user_id: currentUser.id };
-            console.log("[role-join] inserting project_participants:", insertPayload);
-            const { data: jpData, error } = await sbClient.from("project_participants").insert(insertPayload).select();
-            console.log("[role-join] insert result → data:", jpData, "error:", error);
-            if (error && error.code !== "23505") console.error("[role-join]", error.message);
-          }
-          pushNotification(msg);
-          await loadMyPage();
-          loadWorkspace(projId);
-        };
-        confirmDialog.showModal();
-      },
-      () => pushNotification(t("preq.answer.waiting"))
-    );
-  });
+document.getElementById("projectDetailPanel").addEventListener("click", event => {
+  const btn = event.target.closest(".role-join");
+  if (!btn) return;
+  if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
+  const projId   = btn.dataset.projectId;
+  const roleName = btn.dataset.role;
+  if (projId) joinProject(projId, roleName);
 });
 
 confirmYes.addEventListener("click", async () => {
@@ -1130,10 +1106,10 @@ function applyFilters() {
   const status = document.getElementById("statusFilter")?.value || "all";
   projects = [...document.querySelectorAll(".project-card")];
   projects.forEach(p => {
-    const rm = role   === "all" || p.dataset.role   === role;
-    const rg = region === "Nationwide"
+    const rm = role === "all" || p.dataset.role === role;
+    const rg = region === "nationwide"
              || p.dataset.region === region
-             || p.dataset.region === "Nationwide";
+             || p.dataset.region === "nationwide";
     const st = status === "all" || p.dataset.status === status;
     p.style.display = rm && rg && st ? "flex" : "none";
   });
@@ -1166,25 +1142,22 @@ async function loadDiscoverProjects() {
     lang === "ko" ? `${openCount}개 모집 중` : `${openCount} open`;
 
   data.forEach((proj, idx) => {
-    const roles    = proj.recruitment_details || [];
-    const region   = (proj.regions && proj.regions[0]) || "Nationwide";
-    const isNation = proj.regions && proj.regions.includes("Nationwide");
-    const dataRole = roles[0]?.role_name || "all";
+    const roles         = proj.recruitment_details || [];
+    const primaryRegion = (proj.regions && proj.regions[0]) || "nationwide";
+    const isNation      = (proj.regions || []).includes("nationwide");
+    const dataRole      = roles[0]?.role_name || "all";
 
     const tagHtml = roles.slice(0, 3).map(r => {
-      let label = `${r.role_name} ×${r.headcount}`;
+      const roleName = t("role." + r.role_name) || r.role_name;
+      let label = `${roleName} ×${r.headcount}`;
       if (r.min_age && r.max_age) label += ` / ${r.min_age}–${r.max_age}`;
       return `<span class="tag">${escapeHtml(label)}</span>`;
     }).join("");
 
-    const regionHtml = (proj.regions || ["Nationwide"]).slice(0, 2).map(rg =>
-      `<span class="tag">${escapeHtml(rg)}</span>`
-    ).join("");
-
     const card = document.createElement("article");
     card.className = "project-card";
     card.dataset.role      = dataRole;
-    card.dataset.region    = isNation ? "Nationwide" : region;
+    card.dataset.region    = isNation ? "nationwide" : primaryRegion;
     card.dataset.projectId = proj.id;
     card.dataset.status    = getProjectStatus(proj.closing_date);
     card.innerHTML = `
@@ -1196,10 +1169,10 @@ async function loadDiscoverProjects() {
       <div class="card-meta">
         <span>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          ${escapeHtml(region)}
+          ${escapeHtml(t("region." + primaryRegion) || primaryRegion)}
         </span>
       </div>
-      <div class="card-tags">${tagHtml}${regionHtml}</div>
+      <div class="card-tags">${tagHtml}</div>
       <button class="join-btn" data-i18n="card.join">${lang === "ko" ? "참여" : "Join"}</button>
     `;
     projectList.appendChild(card);
@@ -1217,11 +1190,10 @@ sbClient.auth.onAuthStateChange((event, session) => {
   if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
     state.authed = true;
     currentUser  = session.user;
+    renderIdentity();
   } else if (event === "SIGNED_OUT") {
-    state.authed = false;
-    currentUser  = null;
+    clearUserState();
   }
-  renderIdentity();
 });
 
 /* ── WORKSPACE ───────────────────────────────────────────────────────── */
@@ -1413,6 +1385,50 @@ document.getElementById("joinedList").addEventListener("click", event => {
 
 /* ── PRE-QUESTION LOGIC ─────────────────────────────────────── */
 
+async function joinProject(projId, roleName) {
+  if (!projId || !currentUser) return;
+
+  // 1. Guard: check for existing record (confirmed or rejected)
+  const { data: existing } = await sbClient
+    .from("project_participants")
+    .select("status")
+    .eq("project_id", projId)
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  if (existing?.status === "rejected") {
+    showToast(lang === "ko" ? "재지원은 불가합니다." : "Re-application is not allowed.");
+    return;
+  }
+  if (existing?.status === "confirmed") {
+    showToast(lang === "ko" ? "이미 참여 중인 프로젝트입니다." : "You are already participating.");
+    return;
+  }
+
+  // 2. Run pre-screening then insert with result status
+  initiateJoin(
+    projId,
+    async () => {
+      // Answer matched — confirmed
+      const payload = { project_id: projId, user_id: currentUser.id, status: "confirmed" };
+      if (roleName) payload.role_name = roleName;
+      const { error } = await sbClient.from("project_participants").insert(payload);
+      if (error && error.code !== "23505") { console.error("[join]", error.message); return; }
+      showToast(lang === "ko" ? "프로젝트에 참여하게 되었습니다!" : "You have successfully joined the project!");
+      pushNotification(t("notif.joined"));
+      await loadMyPage();
+    },
+    async () => {
+      // Answer did not match — rejected
+      const payload = { project_id: projId, user_id: currentUser.id, status: "rejected" };
+      if (roleName) payload.role_name = roleName;
+      const { error } = await sbClient.from("project_participants").insert(payload);
+      if (error && error.code !== "23505") console.error("[join-rejected]", error.message);
+      showToast(lang === "ko" ? "아쉽게도 성격이 달라 참여하지 못했습니다." : "Sorry, you cannot join due to conflicting characteristics.");
+    }
+  );
+}
+
 async function initiateJoin(projId, onApproved, onWaiting) {
   // Fetch pre-screening question from Supabase
   const { data, error } = await sbClient
@@ -1425,7 +1441,12 @@ async function initiateJoin(projId, onApproved, onWaiting) {
   if (!data || !data.question_text) { onApproved(); return; }
   preqAnswerQ.textContent = data.question_text;
   const required = data.target_answer || "none";
-  const cleanup = () => { preqAnswerYes.onclick = null; preqAnswerNo.onclick = null; };
+  const cleanup = () => {
+    preqAnswerYes.onclick = null;
+    preqAnswerNo.onclick  = null;
+    const closeBtn = document.getElementById("preqAnswerClose");
+    if (closeBtn) closeBtn.onclick = null;
+  };
   preqAnswerYes.onclick = () => {
     cleanup(); preqAnswerDialog.close();
     (required === "none" || required === "yes") ? onApproved() : onWaiting();
@@ -1434,6 +1455,8 @@ async function initiateJoin(projId, onApproved, onWaiting) {
     cleanup(); preqAnswerDialog.close();
     (required === "none" || required === "no") ? onApproved() : onWaiting();
   };
+  const closeBtn = document.getElementById("preqAnswerClose");
+  if (closeBtn) closeBtn.onclick = () => { cleanup(); preqAnswerDialog.close(); };
   preqAnswerDialog.showModal();
 }
 

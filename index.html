@@ -55,35 +55,37 @@
           <span data-i18n="filter.role.label">ROLE</span>
           <select id="roleFilter">
             <option value="all" data-i18n="role.all">All roles</option>
-            <option value="Director" data-i18n="role.director">Director</option>
-            <option value="Screenwriter" data-i18n="role.screenwriter">Screenwriter</option>
-            <option value="Editor" data-i18n="role.editor">Editor</option>
-            <option value="Cinematographer" data-i18n="role.cinematographer">Cinematographer</option>
-            <option value="Actor" data-i18n="role.actor">Actor</option>
-            <option value="Composer" data-i18n="role.composer">Composer</option>
+            <option value="director" data-i18n="role.director">Director</option>
+            <option value="assdirector" data-i18n="role.assdirector">Asst. Director</option>
+            <option value="maleactor" data-i18n="role.maleactor">Male Actor</option>
+            <option value="femaleactor" data-i18n="role.femaleactor">Female Actor</option>
+            <option value="filming" data-i18n="role.filming">Filming</option>
+            <option value="editing" data-i18n="role.editing">Editing</option>
+            <option value="script" data-i18n="role.script">Script</option>
+            <option value="music" data-i18n="role.music">Music</option>
           </select>
         </label>
         <label class="filter-label">
           <span data-i18n="filter.region.label">REGION</span>
           <select id="regionFilter">
-            <option value="Nationwide" data-i18n="region.nationwide">Nationwide</option>
-            <option value="Seoul" data-i18n="region.seoul">Seoul</option>
-            <option value="Gyeonggi" data-i18n="region.gyeonggi">Gyeonggi</option>
-            <option value="Incheon" data-i18n="region.incheon">Incheon</option>
-            <option value="Gangwon" data-i18n="region.gangwon">Gangwon</option>
-            <option value="Chungbuk" data-i18n="region.chungbuk">Chungbuk</option>
-            <option value="Chungnam" data-i18n="region.chungnam">Chungnam</option>
-            <option value="Daejeon" data-i18n="region.daejeon">Daejeon</option>
-            <option value="Sejong" data-i18n="region.sejong">Sejong</option>
-            <option value="Jeonbuk" data-i18n="region.jeonbuk">Jeonbuk</option>
-            <option value="Jeonnam" data-i18n="region.jeonnam">Jeonnam</option>
-            <option value="Gwangju" data-i18n="region.gwangju">Gwangju</option>
-            <option value="Gyeongbuk" data-i18n="region.gyeongbuk">Gyeongbuk</option>
-            <option value="Gyeongnam" data-i18n="region.gyeongnam">Gyeongnam</option>
-            <option value="Daegu" data-i18n="region.daegu">Daegu</option>
-            <option value="Busan" data-i18n="region.busan">Busan</option>
-            <option value="Ulsan" data-i18n="region.ulsan">Ulsan</option>
-            <option value="Jeju" data-i18n="region.jeju">Jeju</option>
+            <option value="nationwide" data-i18n="region.nationwide">Nationwide</option>
+            <option value="seoul" data-i18n="region.seoul">Seoul</option>
+            <option value="gyeonggi" data-i18n="region.gyeonggi">Gyeonggi</option>
+            <option value="incheon" data-i18n="region.incheon">Incheon</option>
+            <option value="gangwon" data-i18n="region.gangwon">Gangwon</option>
+            <option value="chungbuk" data-i18n="region.chungbuk">Chungbuk</option>
+            <option value="chungnam" data-i18n="region.chungnam">Chungnam</option>
+            <option value="daejeon" data-i18n="region.daejeon">Daejeon</option>
+            <option value="sejong" data-i18n="region.sejong">Sejong</option>
+            <option value="jeonbuk" data-i18n="region.jeonbuk">Jeonbuk</option>
+            <option value="jeonnam" data-i18n="region.jeonnam">Jeonnam</option>
+            <option value="gwangju" data-i18n="region.gwangju">Gwangju</option>
+            <option value="gyeongbuk" data-i18n="region.gyeongbuk">Gyeongbuk</option>
+            <option value="gyeongnam" data-i18n="region.gyeongnam">Gyeongnam</option>
+            <option value="daegu" data-i18n="region.daegu">Daegu</option>
+            <option value="busan" data-i18n="region.busan">Busan</option>
+            <option value="ulsan" data-i18n="region.ulsan">Ulsan</option>
+            <option value="jeju" data-i18n="region.jeju">Jeju</option>
           </select>
         </label>
         <label class="filter-label">
@@ -480,6 +482,7 @@
 
   <!-- ─── PRE-QUESTION ANSWER DIALOG (applicant) ───────────── -->
   <dialog id="preqAnswerDialog" class="modal preq-modal">
+    <button type="button" class="modal-x-btn" id="preqAnswerClose">✕</button>
     <h3 data-i18n="preq.answer.title">사전 질문</h3>
     <p class="preq-answer-q" id="preqAnswerQ"></p>
     <div class="preq-modal-actions preq-answer-actions">
