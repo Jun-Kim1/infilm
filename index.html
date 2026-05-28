@@ -87,8 +87,12 @@
           </select>
         </label>
         <label class="filter-label">
-          <span data-i18n="filter.date.label">RECRUITING UNTIL</span>
-          <input type="date" value="2026-07-25" />
+          <span data-i18n="filter.status.label">STATUS</span>
+          <select id="statusFilter">
+            <option value="all" data-i18n="status.all">All</option>
+            <option value="open" data-i18n="status.open">Recruiting</option>
+            <option value="closed" data-i18n="status.closed">Closed</option>
+          </select>
         </label>
       </div>
 
@@ -189,6 +193,13 @@
             <div id="roleDetails" class="role-details-wrap"></div>
           </div>
         </div>
+        <!-- 모집 마감일 -->
+        <div class="cf-row">
+          <div class="cf-label"><span data-i18n="create.f.deadline">모집 마감일</span></div>
+          <div class="cf-control">
+            <input id="closingDate" type="date" />
+          </div>
+        </div>
         <!-- 사전 질문 -->
         <div class="cf-row">
           <div class="cf-label">
@@ -198,14 +209,14 @@
           <div class="cf-control">
             <div class="preq-setup-row" id="preqSetupRow">
               <span class="preq-none" data-i18n="preq.none">No question set</span>
-              <button type="button" class="ghost-btn preq-set-btn" id="preqSetBtn" data-i18n="preq.set">Set question</button>
+              <button type="button" class="ghost-btn preq-set-btn" id="preqSetBtn" data-i18n="preq.set" onclick="openPreqDialog()">Set question</button>
             </div>
             <div class="preq-preview hidden" id="preqPreview">
               <div class="preq-preview-inner">
                 <div class="preq-preview-q" id="preqPreviewQ"></div>
                 <div class="preq-preview-meta" id="preqPreviewMeta"></div>
               </div>
-              <button type="button" class="micro-btn" id="preqEditBtn" data-i18n="preq.change">Edit</button>
+              <button type="button" class="micro-btn" id="preqEditBtn" data-i18n="preq.change" onclick="openPreqDialog()">Edit</button>
             </div>
           </div>
         </div>
@@ -258,6 +269,7 @@
           <div class="detail-main">
             <span class="genre-tag thriller" id="detailGenre">Thriller Short</span>
             <h2 class="display-title" id="detailTitle">Glass Corridor</h2>
+            <div id="detailStatus"></div>
             <p class="display-sub" id="detailDesc">A suspense short film with urban interiors, practical effects, and low-light choreography.</p>
             <p class="detail-meta" id="detailRegion">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>

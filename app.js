@@ -43,7 +43,9 @@ const i18n = {
     "discover.title1": "Find the right crew", "discover.title2": "without friction",
     "discover.sub": "Filter by role, region, and production window. Joining requires authentication and clearly communicates policy.",
     "discover.footer": "More projects loading as crews publish their calls",
-    "filter.role.label": "ROLE", "filter.region.label": "REGION", "filter.date.label": "RECRUITING UNTIL",
+    "filter.role.label": "ROLE", "filter.region.label": "REGION", "filter.status.label": "STATUS",
+    "status.all": "All", "status.open": "Recruiting", "status.closed": "Closed",
+    "create.f.deadline": "Recruitment deadline",
     "role.all": "All roles", "role.director": "Director", "role.screenwriter": "Screenwriter",
     "role.editor": "Editor", "role.cinematographer": "Cinematographer",
     "role.actor": "Actor", "role.composer": "Composer", "role.leadactor": "Lead Actor",
@@ -165,9 +167,11 @@ const i18n = {
     "drawer.title": "알림",
     "discover.label": "작품 탐색", "discover.open": "0개 모집 중",
     "discover.title1": "번거로움 없이", "discover.title2": "딱 맞는 크루를 찾으세요",
-    "discover.sub": "역할, 지역, 촬영 기간으로 원하는 프로젝트를 찾으세요. 참여 신청은 로그인 후 가능하며 취소 패널티 정책을 명확히 안내합니다.",
+    "discover.sub": "역할, 지역, 촬영 기간으로 원하는 프로젝트를 찾으세요.",
     "discover.footer": "새 프로젝트가 계속 추가되고 있습니다",
-    "filter.role.label": "역할", "filter.region.label": "지역", "filter.date.label": "모집 기간",
+    "filter.role.label": "역할", "filter.region.label": "지역", "filter.status.label": "모집 상태",
+    "status.all": "전체", "status.open": "모집 중", "status.closed": "종료",
+    "create.f.deadline": "모집 마감일",
     "role.all": "전체 역할", "role.director": "감독", "role.screenwriter": "작가",
     "role.editor": "에디터", "role.cinematographer": "촬영감독",
     "role.actor": "배우", "role.composer": "음악감독", "role.leadactor": "주연 배우",
@@ -342,10 +346,11 @@ const roleFilter     = document.getElementById("roleFilter");
 const regionFilter   = document.getElementById("regionFilter");
 let   projects       = [];   // populated by loadDiscoverProjects()
 
-let authMode = "login";
+let authMode     = "login";
 let confirmAction = null;
-let currentUser = null;
-let chatChannel = null;
+let currentUser  = null;
+let chatChannel  = null;
+let currentPreq  = { text: "", required: "none" };
 
 /* ── I18N APPLY ───────────────────────────────────────────── */
 function t(key) {
@@ -477,12 +482,64 @@ function showProjectStats() {
   loadRoleStats();
 }
 
-function showProjectDetail(title, desc) {
+function showProjectDetail(title, desc, closingDate) {
   detailTitle.textContent = title || "";
   detailDesc.textContent  = desc  || "";
+  const statusEl = document.getElementById("detailStatus");
+  if (statusEl) statusEl.innerHTML = statusBadgeHtml(closingDate ?? null);
   document.getElementById("projectStatsPanel").classList.add("hidden");
   document.getElementById("projectDetailPanel").classList.remove("hidden");
   setScreen("project");
+}
+
+async function loadProjectDetail(projectId) {
+  console.log("[project] card clicked:", projectId);
+  try {
+    const { data: proj, error } = await sbClient
+      .from("projects")
+      .select("id, title, description, regions, closing_date, recruitment_details(role_name, headcount, min_age, max_age, career_required)")
+      .eq("id", projectId)
+      .single();
+
+    if (error || !proj) {
+      console.error("[project] fetch failed:", error?.message);
+      return;
+    }
+
+    detailTitle.textContent = proj.title || "";
+    detailDesc.textContent  = proj.description || "";
+
+    const statusEl = document.getElementById("detailStatus");
+    if (statusEl) statusEl.innerHTML = statusBadgeHtml(proj.closing_date);
+
+    const regionText = (proj.regions || []).join(" · ") || (lang === "ko" ? "전국" : "Nationwide");
+    const detailRegionEl = document.getElementById("detailRegion");
+    if (detailRegionEl) {
+      detailRegionEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(regionText)}`;
+    }
+
+    const slotsEl = document.querySelector("#projectDetailPanel .detail-slots");
+    if (slotsEl) {
+      const roles = proj.recruitment_details || [];
+      const slotsLabel = lang === "ko" ? "모집 분야" : "Open positions";
+      const slotsHtml = roles.length
+        ? roles.map(r => {
+            const agePart = (r.min_age && r.max_age) ? ` · ${r.min_age}–${r.max_age}세` : "";
+            return `<button class="slot-row role-join" data-role="${escapeHtml(r.role_name)}" data-project-id="${escapeHtml(proj.id)}">
+              <span>${escapeHtml(r.role_name)}${agePart}</span>
+              <span class="slot-count">×${r.headcount}명 모집</span>
+            </button>`;
+          }).join("")
+        : `<p class="card-empty">${lang === "ko" ? "모집 분야 없음" : "No open positions"}</p>`;
+      slotsEl.innerHTML = `<p class="slots-label">${slotsLabel}</p>${slotsHtml}`;
+    }
+
+    document.getElementById("projectStatsPanel").classList.add("hidden");
+    document.getElementById("projectDetailPanel").classList.remove("hidden");
+    setScreen("project");
+  } catch (err) {
+    console.error("[project] loadProjectDetail error:", err);
+  }
 }
 
 /* ── NOTIFICATIONS ────────────────────────────────────────── */
@@ -611,7 +668,16 @@ authForm.addEventListener("submit", async event => {
 });
 
 projectList.addEventListener("click", event => {
-  const btn = event.target.closest(".join-btn");
+  const btn  = event.target.closest(".join-btn");
+  const card = event.target.closest(".project-card");
+
+  // Card body click (not the join button) → navigate to project detail
+  if (card && !btn) {
+    const projId = card.dataset.projectId;
+    if (projId) loadProjectDetail(projId);
+    return;
+  }
+
   if (!btn) return;
   if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
   const card   = btn.closest(".project-card");
@@ -760,7 +826,8 @@ function collectFormData() {
     };
   });
 
-  return { title, description: desc, regions, roles, preq: { ...currentPreq } };
+  return { title, description: desc, regions, roles, preq: { ...currentPreq },
+           closingDate: document.getElementById("closingDate")?.value || null };
 }
 
 /**
@@ -781,10 +848,11 @@ async function createProject(formData) {
   const { data: project, error: projError } = await sbClient
     .from("projects")
     .insert({
-      creator_id:  userId,
-      title:       formData.title,
-      description: formData.description,
-      regions:     formData.regions          // stored as array (text[])
+      creator_id:   userId,
+      title:        formData.title,
+      description:  formData.description,
+      regions:      formData.regions,
+      closing_date: formData.closingDate || null
     })
     .select("id")
     .single();
@@ -884,7 +952,7 @@ createForm.addEventListener("submit", async event => {
       ? `프로젝트 공고: ${formData.title}`
       : `Project published: ${formData.title}.`
   );
-  showProjectDetail(formData.title, formData.description);
+  showProjectDetail(formData.title, formData.description, formData.closingDate);
   resetCreateForm();
 });
 
@@ -1053,17 +1121,20 @@ chatForm.addEventListener("submit", async event => {
 function applyFilters() {
   const role   = roleFilter.value;
   const region = regionFilter.value;
+  const status = document.getElementById("statusFilter")?.value || "all";
   projects = [...document.querySelectorAll(".project-card")];
   projects.forEach(p => {
     const rm = role   === "all" || p.dataset.role   === role;
     const rg = region === "Nationwide"
              || p.dataset.region === region
              || p.dataset.region === "Nationwide";
-    p.style.display = rm && rg ? "flex" : "none";
+    const st = status === "all" || p.dataset.status === status;
+    p.style.display = rm && rg && st ? "flex" : "none";
   });
 }
 roleFilter.addEventListener("change", applyFilters);
 regionFilter.addEventListener("change", applyFilters);
+document.getElementById("statusFilter")?.addEventListener("change", applyFilters);
 
 /* ── DISCOVER: load projects from Supabase ───────────────── */
 async function loadDiscoverProjects() {
@@ -1071,7 +1142,7 @@ async function loadDiscoverProjects() {
 
   const { data, error } = await sbClient
     .from("projects")
-    .select("id, title, regions, recruitment_details(role_name, headcount, min_age, max_age)")
+    .select("id, title, regions, closing_date, recruitment_details(role_name, headcount, min_age, max_age)")
     .order("created_at", { ascending: false })
     .limit(30);
 
@@ -1084,8 +1155,9 @@ async function loadDiscoverProjects() {
     return;
   }
 
+  const openCount = data.filter(p => getProjectStatus(p.closing_date) === "open").length;
   document.getElementById("openCount").textContent =
-    lang === "ko" ? `${data.length}개 모집 중` : `${data.length} open`;
+    lang === "ko" ? `${openCount}개 모집 중` : `${openCount} open`;
 
   data.forEach((proj, idx) => {
     const roles    = proj.recruitment_details || [];
@@ -1108,9 +1180,11 @@ async function loadDiscoverProjects() {
     card.dataset.role      = dataRole;
     card.dataset.region    = isNation ? "Nationwide" : region;
     card.dataset.projectId = proj.id;
+    card.dataset.status    = getProjectStatus(proj.closing_date);
     card.innerHTML = `
       <div class="card-top">
         <span class="card-num">${String(idx + 1).padStart(2, "0")}</span>
+        ${statusBadgeHtml(proj.closing_date)}
       </div>
       <h3 class="card-title">${escapeHtml(proj.title)}</h3>
       <div class="card-meta">
@@ -1142,6 +1216,25 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/**
+ * Returns "open" if today <= closingDate (still recruiting),
+ * or "closed" if the deadline has passed (or no date provided).
+ */
+function getProjectStatus(closingDate) {
+  if (!closingDate) return "open";
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today <= new Date(closingDate) ? "open" : "closed";
+}
+
+/** Returns an HTML string for the status badge. */
+function statusBadgeHtml(closingDate) {
+  const status = getProjectStatus(closingDate);
+  return status === "open"
+    ? `<span class="status-badge status-badge--open">${lang === "ko" ? "모집 중" : "Recruiting"}</span>`
+    : `<span class="status-badge status-badge--closed">${lang === "ko" ? "종료" : "Closed"}</span>`;
 }
 
 function appendChatMsg(username, content) {
@@ -1300,9 +1393,7 @@ document.getElementById("joinedList").addEventListener("click", event => {
   }
 });
 
-/* ── MOCK PROJECT DATA (for preq demo) ─────────────────────── */
 /* ── PRE-QUESTION LOGIC ─────────────────────────────────────── */
-let currentPreq = { text: "", required: "none" };
 
 async function initiateJoin(projId, onApproved, onWaiting) {
   // Fetch pre-screening question from Supabase
@@ -1329,10 +1420,16 @@ async function initiateJoin(projId, onApproved, onWaiting) {
 }
 
 function openPreqDialog() {
-  document.getElementById("preqText").value = currentPreq.text;
-  setCselValue("preqRequired", currentPreq.required);
-  document.getElementById("preqCount").textContent = currentPreq.text.length;
-  preqDialog.showModal();
+  console.log("[preq] openPreqDialog called");
+  try {
+    document.getElementById("preqText").value = currentPreq.text;
+    setCselValue("preqRequired", currentPreq.required);
+    document.getElementById("preqCount").textContent = currentPreq.text.length;
+    preqDialog.showModal();
+    console.log("[preq] dialog opened");
+  } catch (err) {
+    console.error("[preq] openPreqDialog error:", err);
+  }
 }
 
 function savePreq() {
@@ -1364,10 +1461,10 @@ document.getElementById("preqText").addEventListener("input", function () {
   document.getElementById("preqCount").textContent = this.value.length;
 });
 
-/* ── DATE PICKER — click anywhere opens picker ──────────────── */
-const dateFilterInput = document.querySelector('.filter-label input[type="date"]');
-if (dateFilterInput) {
-  dateFilterInput.addEventListener("click", function () {
+/* ── DATE PICKER — click anywhere opens native picker ───────── */
+const closingDateInput = document.getElementById("closingDate");
+if (closingDateInput) {
+  closingDateInput.addEventListener("click", function () {
     try { this.showPicker(); } catch (_) {}
   });
 }
