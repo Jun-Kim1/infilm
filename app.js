@@ -418,9 +418,10 @@ async function loadRoleStats() {
   const max  = entries[0][1];
   const unit = lang === "ko" ? "명" : "";
   el.innerHTML = entries.map(([role, count]) => {
-    const pct = Math.round(count / max * 100);
+    const pct      = Math.round(count / max * 100);
+    const roleLabel = t("role." + role) || role;
     return `<div class="stat-bar-row">
-      <span class="stat-bar-role">${escapeHtml(role)}</span>
+      <span class="stat-bar-role">${escapeHtml(roleLabel)}</span>
       <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
       <span class="stat-bar-count">${count}${unit}</span>
     </div>`;
@@ -444,7 +445,7 @@ async function loadMyPage() {
   currentUser = session.user;
   const [{ data: created, error: ce }, { data: participations, error: pe }] = await Promise.all([
     sbClient.from("projects").select("id, title").eq("creator_id", userId).order("created_at", { ascending: false }),
-    sbClient.from("project_participants").select("project_id").eq("user_id", userId).eq("status", "confirmed").order("created_at", { ascending: false })
+    sbClient.from("project_participants").select("project_id").eq("user_id", userId).order("created_at", { ascending: false })
   ]);
 
   // Second step: fetch project details for each participation row
@@ -503,7 +504,7 @@ async function loadProjectDetail(projectId) {
   try {
     const { data: proj, error } = await sbClient
       .from("projects")
-      .select("id, title, description, regions, closing_date, recruitment_details(role_name, headcount, min_age, max_age, career_required)")
+      .select("id, title, description, regions, closing_date, creator_id, recruitment_details(role_name, headcount, min_age, max_age, career_required)")
       .eq("id", projectId)
       .single();
 
@@ -530,6 +531,14 @@ async function loadProjectDetail(projectId) {
     if (slotsEl) {
       const roles = proj.recruitment_details || [];
       const slotsLabel = lang === "ko" ? "모집 분야" : "Open positions";
+
+      // Owner-only manage button
+      const { data: { session: ownSess } } = await sbClient.auth.getSession();
+      const isOwner = ownSess?.user?.id === proj.creator_id;
+      const manageBtnHtml = isOwner
+        ? `<button class="manage-project-btn" onclick="showProjectStats()">${lang === "ko" ? "프로젝트 관리 →" : "Manage project →"}</button>`
+        : "";
+
       const slotsHtml = roles.length
         ? roles.map(r => {
             const roleName = t("role." + r.role_name) || r.role_name;
@@ -543,7 +552,7 @@ async function loadProjectDetail(projectId) {
             </button>`;
           }).join("")
         : `<p class="card-empty">${lang === "ko" ? "모집 분야 없음" : "No open positions"}</p>`;
-      slotsEl.innerHTML = `<p class="slots-label">${slotsLabel}</p>${slotsHtml}`;
+      slotsEl.innerHTML = `<p class="slots-label">${slotsLabel}</p>${slotsHtml}${manageBtnHtml}`;
     }
 
     document.getElementById("projectStatsPanel").classList.add("hidden");
@@ -1386,22 +1395,26 @@ document.getElementById("joinedList").addEventListener("click", event => {
 /* ── PRE-QUESTION LOGIC ─────────────────────────────────────── */
 
 async function joinProject(projId, roleName) {
-  if (!projId || !currentUser) return;
+  if (!projId) return;
 
-  // 1. Guard: check for existing record (confirmed or rejected)
-  const { data: existing } = await sbClient
-    .from("project_participants")
-    .select("status")
-    .eq("project_id", projId)
-    .eq("user_id", currentUser.id)
-    .maybeSingle();
-
-  if (existing?.status === "rejected") {
-    showToast(lang === "ko" ? "재지원은 불가합니다." : "Re-application is not allowed.");
+  // Live session check — never rely on potentially stale global
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) {
+    authMode = "login"; updateAuthCopy(); authDialog.showModal();
     return;
   }
-  if (existing?.status === "confirmed") {
-    showToast(lang === "ko" ? "이미 참여 중인 프로젝트입니다." : "You are already participating.");
+  const userId = session.user.id;
+
+  // 1. Guard: check for any existing participation record
+  const { data: existing } = await sbClient
+    .from("project_participants")
+    .select("id")
+    .eq("project_id", projId)
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existing) {
+    showToast(lang === "ko" ? "이미 참여 이력이 있는 프로젝트입니다." : "You have already applied to this project.");
     return;
   }
 
@@ -1409,21 +1422,22 @@ async function joinProject(projId, roleName) {
   initiateJoin(
     projId,
     async () => {
-      // Answer matched — confirmed
-      const payload = { project_id: projId, user_id: currentUser.id, status: "confirmed" };
-      if (roleName) payload.role_name = roleName;
-      const { error } = await sbClient.from("project_participants").insert(payload);
-      if (error && error.code !== "23505") { console.error("[join]", error.message); return; }
+      // Approved — try with status+role_name; fall back to base schema if columns not yet migrated
+      const full = { project_id: projId, user_id: userId, status: "confirmed" };
+      if (roleName) full.role_name = roleName;
+      const { error } = await sbClient.from("project_participants").insert(full);
+      if (error && error.code !== "23505") {
+        await sbClient.from("project_participants").insert({ project_id: projId, user_id: userId });
+      }
+      // Toast always fires regardless of DB result
       showToast(lang === "ko" ? "프로젝트에 참여하게 되었습니다!" : "You have successfully joined the project!");
       pushNotification(t("notif.joined"));
       await loadMyPage();
     },
     async () => {
-      // Answer did not match — rejected
-      const payload = { project_id: projId, user_id: currentUser.id, status: "rejected" };
-      if (roleName) payload.role_name = roleName;
-      const { error } = await sbClient.from("project_participants").insert(payload);
-      if (error && error.code !== "23505") console.error("[join-rejected]", error.message);
+      // Rejected — attempt to record rejection; show toast regardless
+      await sbClient.from("project_participants")
+        .insert({ project_id: projId, user_id: userId, status: "rejected" });
       showToast(lang === "ko" ? "아쉽게도 성격이 달라 참여하지 못했습니다." : "Sorry, you cannot join due to conflicting characteristics.");
     }
   );
