@@ -443,21 +443,37 @@ async function loadMyPage() {
   }
   // Keep global in sync with the live session
   currentUser = session.user;
+
+  // Step 1: fetch created projects + raw participation rows in parallel
+  // Note: plain select avoids embedded-FK-join and status-column issues pre-migration
   const [{ data: created, error: ce }, { data: participations, error: pe }] = await Promise.all([
-    sbClient.from("projects").select("id, title").eq("creator_id", userId).order("created_at", { ascending: false }),
-    sbClient.from("project_participants").select("project_id").eq("user_id", userId).order("created_at", { ascending: false })
+    sbClient.from("projects")
+      .select("id, title")
+      .eq("creator_id", userId)
+      .order("created_at", { ascending: false }),
+    sbClient.from("project_participants")
+      .select("project_id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
   ]);
 
-  // Second step: fetch project details for each participation row
+  if (ce) console.error("[mypage] created query error:", ce.message);
+  if (pe) console.error("[mypage] participations query error:", pe.message);
+  console.log("[mypage] participation rows:", participations);
+
+  // Step 2: look up project titles for each participation row
   let joined = [];
-  let je = pe;
   if (!pe && participations?.length) {
-    const ids = participations.map(p => p.project_id);
-    const { data: joinedProjects, error: je2 } = await sbClient
-      .from("projects").select("id, title").in("id", ids);
-    je = je2;
-    joined = joinedProjects || [];
+    const ids = participations.map(p => p.project_id).filter(Boolean);
+    if (ids.length) {
+      const { data: joinedProjects, error: je } = await sbClient
+        .from("projects").select("id, title").in("id", ids);
+      if (je) console.error("[mypage] joined-projects lookup error:", je.message);
+      joined = joinedProjects || [];
+    }
   }
+  console.log("[mypage] joined projects resolved:", joined);
+
   createdEl.innerHTML = (!ce && created?.length)
     ? created.map(p => `<li class="list-item" data-project-id="${p.id}">
         <span>${escapeHtml(p.title)}</span>
@@ -467,7 +483,7 @@ async function loadMyPage() {
         </div>
       </li>`).join("")
     : emptyCreated;
-  joinedEl.innerHTML = (!je && joined?.length)
+  joinedEl.innerHTML = (!pe && joined.length)
     ? joined.map(p => `<li class="list-item joined-card" data-project-id="${p.id}">
         <div class="joined-info">
           <span class="joined-title">${escapeHtml(p.title)}</span>
@@ -481,7 +497,22 @@ async function loadMyPage() {
     : emptyJoined;
 }
 
-function showProjectStats() {
+async function showProjectStats() {
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (!session?.user) {
+    authMode = "login"; updateAuthCopy(); authDialog.showModal();
+    return;
+  }
+  // Restrict to project owners only
+  const { data: owned } = await sbClient
+    .from("projects").select("id").eq("creator_id", session.user.id).limit(1);
+  if (!owned?.length) {
+    showToast(lang === "ko" ? "프로젝트를 먼저 생성해야 이 화면에 접근할 수 있습니다." : "Create a project first to access this area.");
+    return;
+  }
+  // Close detail modal if open
+  const detailModal = document.getElementById("projectDetailModal");
+  if (detailModal?.open) detailModal.close();
   document.getElementById("projectStatsPanel").classList.remove("hidden");
   document.getElementById("projectDetailPanel").classList.add("hidden");
   setScreen("project");
@@ -500,7 +531,7 @@ function showProjectDetail(title, desc, closingDate) {
 }
 
 async function loadProjectDetail(projectId) {
-  console.log("[project] card clicked:", projectId);
+  console.log("[join] Step 1: loadProjectDetail called — projectId:", projectId);
   try {
     const { data: proj, error } = await sbClient
       .from("projects")
@@ -509,30 +540,31 @@ async function loadProjectDetail(projectId) {
       .single();
 
     if (error || !proj) {
-      console.error("[project] fetch failed:", error?.message);
+      console.error("[join] Project fetch failed:", error?.message);
       return;
     }
+    console.log("[join] Step 2: Project fetched →", proj.title);
 
-    detailTitle.textContent = proj.title || "";
-    detailDesc.textContent  = proj.description || "";
+    document.getElementById("modalDetailTitle").textContent = proj.title || "";
+    const descEl = document.getElementById("modalDetailDesc");
+    if (descEl) descEl.textContent = proj.description || "";
 
-    const statusEl = document.getElementById("detailStatus");
+    const statusEl = document.getElementById("modalDetailStatus");
     if (statusEl) statusEl.innerHTML = statusBadgeHtml(proj.closing_date);
 
     const regionText = (proj.regions || [])
       .map(r => t("region." + r) || r)
       .join(" · ") || (lang === "ko" ? "전국" : "Nationwide");
-    const detailRegionEl = document.getElementById("detailRegion");
-    if (detailRegionEl) {
-      detailRegionEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(regionText)}`;
+    const regionEl = document.getElementById("modalDetailRegion");
+    if (regionEl) {
+      regionEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(regionText)}`;
     }
 
-    const slotsEl = document.querySelector("#projectDetailPanel .detail-slots");
+    const slotsEl = document.getElementById("modalDetailSlots");
     if (slotsEl) {
       const roles = proj.recruitment_details || [];
       const slotsLabel = lang === "ko" ? "모집 분야" : "Open positions";
 
-      // Owner-only manage button
       const { data: { session: ownSess } } = await sbClient.auth.getSession();
       const isOwner = ownSess?.user?.id === proj.creator_id;
       const manageBtnHtml = isOwner
@@ -541,8 +573,8 @@ async function loadProjectDetail(projectId) {
 
       const slotsHtml = roles.length
         ? roles.map(r => {
-            const roleName = t("role." + r.role_name) || r.role_name;
-            const agePart = (r.min_age && r.max_age)
+            const roleName  = t("role." + r.role_name) || r.role_name;
+            const agePart   = (r.min_age && r.max_age)
               ? ` · ${r.min_age}–${r.max_age}${lang === "ko" ? "세" : "y.o."}`
               : "";
             const countPart = lang === "ko" ? `×${r.headcount}명 모집` : `×${r.headcount} wanted`;
@@ -555,11 +587,10 @@ async function loadProjectDetail(projectId) {
       slotsEl.innerHTML = `<p class="slots-label">${slotsLabel}</p>${slotsHtml}${manageBtnHtml}`;
     }
 
-    document.getElementById("projectStatsPanel").classList.add("hidden");
-    document.getElementById("projectDetailPanel").classList.remove("hidden");
-    setScreen("project");
+    console.log("[join] Step 3: Modal populated — opening dialog");
+    document.getElementById("projectDetailModal").showModal();
   } catch (err) {
-    console.error("[project] loadProjectDetail error:", err);
+    console.error("[join] loadProjectDetail error:", err);
   }
 }
 
@@ -720,13 +751,18 @@ projectList.addEventListener("click", event => {
   if (projId) joinProject(projId, null);
 });
 
-document.getElementById("projectDetailPanel").addEventListener("click", event => {
+document.getElementById("projectDetailModal").addEventListener("click", event => {
   const btn = event.target.closest(".role-join");
   if (!btn) return;
   if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
   const projId   = btn.dataset.projectId;
   const roleName = btn.dataset.role;
+  console.log("[join] Role-join button clicked in modal — projId:", projId, "| role:", roleName);
   if (projId) joinProject(projId, roleName);
+});
+
+document.getElementById("projectDetailModalClose").addEventListener("click", () => {
+  document.getElementById("projectDetailModal").close();
 });
 
 confirmYes.addEventListener("click", async () => {
@@ -1395,64 +1431,81 @@ document.getElementById("joinedList").addEventListener("click", event => {
 /* ── PRE-QUESTION LOGIC ─────────────────────────────────────── */
 
 async function joinProject(projId, roleName) {
-  if (!projId) return;
+  console.log("[join] joinProject called — projId:", projId, "| roleName:", roleName);
+  if (!projId) { console.warn("[join] No projId, aborting."); return; }
 
-  // Live session check — never rely on potentially stale global
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) {
+    console.log("[join] Not logged in — showing auth modal");
     authMode = "login"; updateAuthCopy(); authDialog.showModal();
     return;
   }
   const userId = session.user.id;
+  console.log("[join] Auth OK — userId:", userId);
 
-  // 1. Guard: check for any existing participation record
-  const { data: existing } = await sbClient
+  // Guard: check for any existing participation record
+  const { data: existing, error: existErr } = await sbClient
     .from("project_participants")
-    .select("id")
+    .select("id, status")
     .eq("project_id", projId)
     .eq("user_id", userId)
     .maybeSingle();
+  if (existErr) console.error("[join] Existing-check error:", existErr.message);
 
   if (existing) {
+    console.log("[join] Duplicate found — status:", existing.status);
     showToast(lang === "ko" ? "이미 참여 이력이 있는 프로젝트입니다." : "You have already applied to this project.");
     return;
   }
+  console.log("[join] No existing record — proceeding to pre-screening");
 
-  // 2. Run pre-screening then insert with result status
   initiateJoin(
     projId,
     async () => {
-      // Approved — try with status+role_name; fall back to base schema if columns not yet migrated
+      console.log("[join] Criteria check: PASSED — inserting confirmed record");
       const full = { project_id: projId, user_id: userId, status: "confirmed" };
       if (roleName) full.role_name = roleName;
       const { error } = await sbClient.from("project_participants").insert(full);
-      if (error && error.code !== "23505") {
-        await sbClient.from("project_participants").insert({ project_id: projId, user_id: userId });
+      if (error) {
+        console.warn("[join] Primary insert failed (code:", error.code, "):", error.message);
+        if (error.code !== "23505") {
+          const { error: fe } = await sbClient.from("project_participants")
+            .insert({ project_id: projId, user_id: userId });
+          if (fe) console.error("[join] Fallback insert also failed:", fe.message);
+          else    console.log("[join] Fallback insert OK");
+        }
+      } else {
+        console.log("[join] Inserting to DB: SUCCESS");
       }
-      // Toast always fires regardless of DB result
       showToast(lang === "ko" ? "프로젝트에 참여하게 되었습니다!" : "You have successfully joined the project!");
-      pushNotification(t("notif.joined"));
+      pushNotification(t("notif.participation.done"));
       await loadMyPage();
     },
     async () => {
-      // Rejected — attempt to record rejection; show toast regardless
-      await sbClient.from("project_participants")
+      console.log("[join] Criteria check: FAILED — recording rejection");
+      const { error: re } = await sbClient.from("project_participants")
         .insert({ project_id: projId, user_id: userId, status: "rejected" });
+      if (re) console.warn("[join] Rejection insert failed:", re.message);
       showToast(lang === "ko" ? "아쉽게도 성격이 달라 참여하지 못했습니다." : "Sorry, you cannot join due to conflicting characteristics.");
     }
   );
 }
 
 async function initiateJoin(projId, onApproved, onWaiting) {
-  // Fetch pre-screening question from Supabase
+  console.log("[join] Questionnaire triggered — fetching pre-screening question for projId:", projId);
   const { data, error } = await sbClient
     .from("project_questions")
     .select("question_text, target_answer")
     .eq("project_id", projId)
     .eq("is_active", true)
     .maybeSingle();
-  if (error) console.error("[preq]", error.message);
-  if (!data || !data.question_text) { onApproved(); return; }
+  if (error) console.error("[join] project_questions fetch error:", error.message);
+  if (!data || !data.question_text) {
+    console.log("[join] No pre-screening question found — auto-approving");
+    onApproved();
+    return;
+  }
+  console.log("[join] Pre-screening question:", data.question_text, "| required answer:", data.target_answer);
   preqAnswerQ.textContent = data.question_text;
   const required = data.target_answer || "none";
   const cleanup = () => {
@@ -1462,15 +1515,20 @@ async function initiateJoin(projId, onApproved, onWaiting) {
     if (closeBtn) closeBtn.onclick = null;
   };
   preqAnswerYes.onclick = () => {
+    console.log("[join] User answered: YES | required:", required);
     cleanup(); preqAnswerDialog.close();
     (required === "none" || required === "yes") ? onApproved() : onWaiting();
   };
   preqAnswerNo.onclick = () => {
+    console.log("[join] User answered: NO | required:", required);
     cleanup(); preqAnswerDialog.close();
     (required === "none" || required === "no") ? onApproved() : onWaiting();
   };
   const closeBtn = document.getElementById("preqAnswerClose");
-  if (closeBtn) closeBtn.onclick = () => { cleanup(); preqAnswerDialog.close(); };
+  if (closeBtn) closeBtn.onclick = () => {
+    console.log("[join] Pre-screening dialog dismissed by user");
+    cleanup(); preqAnswerDialog.close();
+  };
   preqAnswerDialog.showModal();
 }
 
