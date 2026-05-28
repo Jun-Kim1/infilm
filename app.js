@@ -381,7 +381,7 @@ function applyLang(l) {
     const sel = csel.querySelector(`.csel-opt[data-value="${csel.dataset.value}"]`);
     if (sel) csel.querySelector(".csel-label").textContent = sel.textContent;
   });
-  renderRoleStats();
+  loadRoleStats();
 }
 
 /* ── SCREEN NAV ───────────────────────────────────────────── */
@@ -680,8 +680,8 @@ projectList.addEventListener("click", event => {
 
   if (!btn) return;
   if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
-  const card   = btn.closest(".project-card");
-  const projId = card?.dataset.projectId || "";
+  const joinCard = btn.closest(".project-card");
+  const projId   = joinCard?.dataset.projectId || "";
   initiateJoin(
     projId,
     () => {
