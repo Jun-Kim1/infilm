@@ -40,6 +40,7 @@ html, body {
   line-height: 1.5;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
+  padding-left: 56px;
 }
 
 h1, h2, h3, h4 { margin: 0; line-height: 1.15; letter-spacing: -0.03em; }
@@ -1397,3 +1398,139 @@ input[type="date"] {
   .stats-kpi-row { grid-template-columns: 1fr; }
   .stat-bar-row { grid-template-columns: 64px 1fr 42px; gap: 10px; }
 }
+
+/* 式式 SERVICE SIDEBAR 式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式式 */
+.service-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 56px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  z-index: 200;
+}
+
+.svc-icon {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-s);
+  color: var(--text-3);
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+
+.svc-icon:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+.svc-icon.svc-active {
+  background: rgba(232,160,32,0.10);
+  color: var(--cta);
+}
+
+.svc-icon.svc-active::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: var(--cta);
+  border-radius: 0 3px 3px 0;
+}
+
+.svc-tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 300;
+}
+
+.svc-icon:hover .svc-tooltip {
+  opacity: 1;
+}
+
+/* -- SERVICE SIDEBAR ------------------------------------------------- */
+.service-sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 56px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  z-index: 200;
+}
+.svc-icon {
+  position: relative;
+  width: 40px; height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-s);
+  color: var(--text-3);
+  transition: background 0.15s, color 0.15s;
+  text-decoration: none;
+}
+.svc-icon:hover { background: var(--surface-2); color: var(--text-1); }
+.svc-icon.svc-active {
+  background: rgba(232,160,32,0.10);
+  color: var(--cta);
+}
+.svc-icon.svc-active::before {
+  content: "";
+  position: absolute;
+  left: -12px; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 20px;
+  background: var(--cta);
+  border-radius: 0 3px 3px 0;
+}
+.svc-tooltip {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  color: var(--text-1);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 5px 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 300;
+}
+.svc-icon:hover .svc-tooltip { opacity: 1; }

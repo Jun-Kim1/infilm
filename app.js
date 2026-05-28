@@ -2,7 +2,13 @@
 const SUPABASE_URL = "https://fexwivtwuxsrjfrkqgam.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8JpAW0UnLFAGErcJw26Zig_5_30AJ1a";
 
-const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession:   true,
+    storage:          window.localStorage,
+    autoRefreshToken: true
+  }
+});
 console.log("[Supabase] Client initialized →", SUPABASE_URL);
 
 async function signUpUser(email, password, displayName) {
@@ -756,10 +762,18 @@ createdList.addEventListener("click", async event => {
     _editingProjectId = li.dataset.projectId;
     // Fetch current project data
     const { data, error } = await sbClient.from("projects")
-      .select("title, description").eq("id", _editingProjectId).maybeSingle();
+      .select("title, description, regions, closing_date").eq("id", _editingProjectId).maybeSingle();
     if (error) { console.error("[edit-project]", error.message); return; }
     editProjTitle.value = data?.title || "";
     editProjDesc.value  = data?.description || "";
+    // Pre-check region checkboxes
+    const savedRegions = (data?.regions || []).map(r => r.toLowerCase());
+    document.querySelectorAll('[name="edit-proj-region"]').forEach(cb => {
+      cb.checked = savedRegions.includes(cb.value);
+    });
+    // Pre-fill closing date
+    const editClosingDateEl = document.getElementById("editClosingDate");
+    if (editClosingDateEl) editClosingDateEl.value = data?.closing_date || "";
     editProjectDialog.showModal();
   }
 
@@ -775,8 +789,10 @@ createdList.addEventListener("click", async event => {
       const { error } = await sbClient.from("projects").delete().eq("id", projId);
       if (error) { console.error("[delete-project]", error.message); return; }
       li.remove();
+      showToast(lang === "ko" ? "프로젝트가 삭제되었습니다." : "Project deleted.");
       pushNotification(t("notif.project.deleted"));
-      loadProjectStats();
+      await loadDiscoverProjects();
+      await loadMyPage();
     };
     confirmDialog.showModal();
   }
@@ -787,8 +803,11 @@ editProjectSaveBtn.addEventListener("click", async () => {
   const newTitle = editProjTitle.value.trim();
   const newDesc  = editProjDesc.value.trim();
   if (!newTitle) return;
+  const regionCbs   = [...document.querySelectorAll('[name="edit-proj-region"]:checked')];
+  const newRegions   = regionCbs.length ? regionCbs.map(cb => cb.value) : ["nationwide"];
+  const newClosingDate = document.getElementById("editClosingDate")?.value || null;
   const { error } = await sbClient.from("projects")
-    .update({ title: newTitle, description: newDesc })
+    .update({ title: newTitle, description: newDesc, regions: newRegions, closing_date: newClosingDate })
     .eq("id", _editingProjectId);
   if (error) { console.error("[edit-project save]", error.message); return; }
   // Update the list item title in DOM
@@ -932,28 +951,15 @@ createForm.addEventListener("submit", async event => {
   submitBtn.disabled    = false;
   submitBtn.textContent = origLabel;
 
-  // ── Update UI on success ──────────────────────────────────────
-  const item = document.createElement("li");
-  item.className = "list-item";
-  item.dataset.projectId = projectId;
-  item.innerHTML =
-    `<span>${formData.title}</span>` +
-    `<span class="item-actions">` +
-      `<button class="micro-btn" data-i18n="btn.edit">${t("btn.edit")}</button>` +
-      `<button class="micro-btn danger" data-i18n="btn.delete">${t("btn.delete")}</button>` +
-    `</span>`;
-  createdList.prepend(item);
-
-  detailTitle.textContent = formData.title;
-  detailDesc.textContent  = formData.description;
-
+  showToast(lang === "ko" ? "프로젝트 생성이 완료되었습니다." : "Project published successfully.");
   pushNotification(
     lang === "ko"
       ? `프로젝트 공고: ${formData.title}`
       : `Project published: ${formData.title}.`
   );
-  showProjectDetail(formData.title, formData.description, formData.closingDate);
   resetCreateForm();
+  await loadDiscoverProjects();
+  setScreen("discover");
 });
 
 /* ── CREATE FORM INTERACTIONS ─────────────────────────────── */
@@ -1205,6 +1211,18 @@ async function loadDiscoverProjects() {
 /* ── INIT ─────────────────────────────────────────────────── */
 applyLang("ko");
 loadDiscoverProjects();
+
+// Restore session on page load and keep state in sync on every auth event
+sbClient.auth.onAuthStateChange((event, session) => {
+  if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
+    state.authed = true;
+    currentUser  = session.user;
+  } else if (event === "SIGNED_OUT") {
+    state.authed = false;
+    currentUser  = null;
+  }
+  renderIdentity();
+});
 
 /* ── WORKSPACE ───────────────────────────────────────────────────────── */
 let activeProjectId = null;

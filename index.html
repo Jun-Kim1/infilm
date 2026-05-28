@@ -407,14 +407,48 @@
 
   <!-- ─── EDIT PROJECT DIALOG ─────────────────────────────── -->
   <dialog id="editProjectDialog" class="modal">
-    <h3 id="editProjectDialogTitle" data-i18n="edit.project.title">프로젝트 편집</h3>
-    <label class="form-label" for="editProjTitle">제목</label>
-    <input id="editProjTitle" class="form-input" type="text" maxlength="100">
-    <label class="form-label" for="editProjDesc" style="margin-top:0.75rem">설명</label>
-    <textarea id="editProjDesc" class="form-input" rows="3" maxlength="1000" style="resize:vertical;margin-top:0.25rem"></textarea>
-    <div class="modal-actions" style="margin-top:1.25rem">
-      <button type="button" class="ghost-btn" id="editProjectCancelBtn" data-i18n="modal.cancel">취소</button>
-      <button type="button" class="cta-btn" id="editProjectSaveBtn" data-i18n="btn.save">저장</button>
+    <div style="padding:28px;display:flex;flex-direction:column;gap:14px;max-height:82vh;overflow-y:auto">
+      <h3 id="editProjectDialogTitle" data-i18n="edit.project.title">프로젝트 편집</h3>
+
+      <div>
+        <label class="form-label" for="editProjTitle" data-i18n="create.f.title">제목</label>
+        <input id="editProjTitle" class="form-input" type="text" maxlength="100" style="margin-top:0.25rem">
+      </div>
+
+      <div>
+        <label class="form-label" for="editProjDesc" data-i18n="create.f.desc">설명</label>
+        <textarea id="editProjDesc" class="form-input" rows="4" maxlength="1000" style="resize:vertical;margin-top:0.25rem"></textarea>
+      </div>
+
+      <div>
+        <label class="form-label" data-i18n="create.f.region">지역</label>
+        <div class="region-cb-grid" style="margin-top:0.5rem">
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="nationwide"><span data-i18n="region.nationwide">전국</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="seoul"><span data-i18n="region.seoul">서울</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="gyeonggi"><span data-i18n="region.gyeonggi">경기</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="chungnam"><span data-i18n="region.chungnam">충남</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="chungbuk"><span data-i18n="region.chungbuk">충북</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="gwangju"><span data-i18n="region.gwangju">광주</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="jeju"><span data-i18n="region.jeju">제주</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="daejeon"><span data-i18n="region.daejeon">대전</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="sejong"><span data-i18n="region.sejong">세종</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="jeonnam"><span data-i18n="region.jeonnam">전남</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="incheon"><span data-i18n="region.incheon">인천</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="busan"><span data-i18n="region.busan">부산</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="ulsan"><span data-i18n="region.ulsan">울산</span></label>
+          <label class="cb-item"><input type="checkbox" name="edit-proj-region" value="daegu"><span data-i18n="region.daegu">대구</span></label>
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label" for="editClosingDate" data-i18n="create.f.deadline">모집 마감일</label>
+        <input id="editClosingDate" class="form-input" type="date" style="margin-top:0.25rem">
+      </div>
+
+      <div class="modal-actions" style="margin-top:0.25rem">
+        <button type="button" class="ghost-btn" id="editProjectCancelBtn" data-i18n="modal.cancel">취소</button>
+        <button type="button" class="cta-btn" id="editProjectSaveBtn" data-i18n="btn.save">저장</button>
+      </div>
     </div>
   </dialog>
 
@@ -453,6 +487,35 @@
       <button type="button" class="preq-btn-cancel" id="preqAnswerNo"><span data-i18n="preq.answer.no">No</span></button>
     </div>
   </dialog>
+
+  <!-- ─── SERVICE SIDEBAR ───────────────────────────────────── -->
+  <nav class="service-sidebar" aria-label="Service switcher">
+    <!-- InFilm (current) -->
+    <a class="svc-icon svc-active" href="https://infilm.onrender.com/" aria-label="InFilm">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="20" height="20" rx="2"/>
+        <line x1="7"  y1="2"  x2="7"  y2="22"/>
+        <line x1="17" y1="2"  x2="17" y2="22"/>
+        <line x1="2"  y1="12" x2="22" y2="12"/>
+        <line x1="2"  y1="7"  x2="7"  y2="7"/>
+        <line x1="17" y1="7"  x2="22" y2="7"/>
+        <line x1="2"  y1="17" x2="7"  y2="17"/>
+        <line x1="17" y1="17" x2="22" y2="17"/>
+      </svg>
+      <span class="svc-tooltip">InFilm</span>
+    </a>
+    <!-- CineTMI -->
+    <a class="svc-icon" href="https://jun-kim1.github.io/cinetmi/" target="_blank" rel="noopener noreferrer" aria-label="CineTMI">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="7" width="20" height="15" rx="2"/>
+        <path d="M2 7l4-4h3L5 7H2z"/>
+        <path d="M9 3l-4 4h4l4-4H9z"/>
+        <path d="M17 3l-4 4h4l4-4h-4z"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+      </svg>
+      <span class="svc-tooltip">CineTMI</span>
+    </a>
+  </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="app.js" charset="utf-8"></script>
