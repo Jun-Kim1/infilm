@@ -756,6 +756,13 @@ textarea { min-height: 110px; resize: vertical; }
 
 .list-item:last-child { border-bottom: none; }
 
+.empty-item {
+  padding: 20px 0;
+  color: var(--text-2);
+  font-size: .875rem;
+  list-style: none;
+}
+
 .item-actions { display: flex; gap: 6px; }
 
 .micro-btn {

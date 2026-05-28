@@ -233,15 +233,15 @@
 
         <div class="stats-kpi-row">
           <div class="kpi-card">
-            <span class="kpi-value" id="statProjects">3</span>
+            <span class="kpi-value" id="statProjects">–</span>
             <span class="kpi-label" data-i18n="stat.projects">Projects</span>
           </div>
           <div class="kpi-card">
-            <span class="kpi-value" id="statParticipants">140</span>
+            <span class="kpi-value" id="statParticipants">–</span>
             <span class="kpi-label" data-i18n="stat.participants">Participants</span>
           </div>
           <div class="kpi-card">
-            <span class="kpi-value" id="statActive">3</span>
+            <span class="kpi-value" id="statActive">–</span>
             <span class="kpi-label" data-i18n="stat.active">Recruiting</span>
           </div>
         </div>
@@ -293,38 +293,13 @@
         <div class="list-block">
           <p class="list-label" data-i18n="mypage.created">Created</p>
           <ul id="createdList">
-            <li class="list-item">
-              <span>Glass Corridor</span>
-              <div class="item-actions">
-                <button class="micro-btn" data-i18n="btn.edit">Edit</button>
-                <button class="micro-btn danger" data-i18n="btn.delete">Delete</button>
-              </div>
-            </li>
+            <!-- populated by loadMyPage() -->
           </ul>
         </div>
         <div class="list-block">
           <p class="list-label" data-i18n="mypage.joined">Joined</p>
           <ul id="joinedList">
-            <li class="list-item joined-card" data-project-id="warm-static">
-              <div class="joined-info">
-                <span class="joined-title">Warm Static</span>
-                <span class="status-pill active" data-i18n="ws.status.active">Active</span>
-              </div>
-              <div class="item-actions">
-                <button class="micro-btn ws-open-btn" data-i18n="ws.open">Workspace</button>
-                <button class="micro-btn danger cancel-join-btn" data-i18n="btn.cancel">Cancel</button>
-              </div>
-            </li>
-            <li class="list-item joined-card" data-project-id="noon-in-black">
-              <div class="joined-info">
-                <span class="joined-title">Noon in Black</span>
-                <span class="status-pill active" data-i18n="ws.status.active">Active</span>
-              </div>
-              <div class="item-actions">
-                <button class="micro-btn ws-open-btn" data-i18n="ws.open">Workspace</button>
-                <button class="micro-btn danger cancel-join-btn" data-i18n="btn.cancel">Cancel</button>
-              </div>
-            </li>
+            <!-- populated by loadMyPage() -->
           </ul>
         </div>
       </div>
@@ -416,6 +391,19 @@
         <button value="submit" class="cta-btn" id="confirmYes" data-i18n="modal.yes">Yes, continue</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- ─── EDIT PROJECT DIALOG ─────────────────────────────── -->
+  <dialog id="editProjectDialog" class="modal">
+    <h3 id="editProjectDialogTitle" data-i18n="edit.project.title">프로젝트 편집</h3>
+    <label class="form-label" for="editProjTitle">제목</label>
+    <input id="editProjTitle" class="form-input" type="text" maxlength="100">
+    <label class="form-label" for="editProjDesc" style="margin-top:0.75rem">설명</label>
+    <textarea id="editProjDesc" class="form-input" rows="3" maxlength="1000" style="resize:vertical;margin-top:0.25rem"></textarea>
+    <div class="modal-actions" style="margin-top:1.25rem">
+      <button type="button" class="ghost-btn" id="editProjectCancelBtn" data-i18n="modal.cancel">취소</button>
+      <button type="button" class="cta-btn" id="editProjectSaveBtn" data-i18n="btn.save">저장</button>
+    </div>
   </dialog>
 
   <!-- ─── PRE-QUESTION SETUP DIALOG (admin) ────────────────── -->

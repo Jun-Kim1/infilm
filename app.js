@@ -39,7 +39,7 @@ const i18n = {
     "nav.project": "Project", "nav.mypage": "My Page", "nav.hub": "Collab Hub",
     "auth.login": "Log in", "auth.logout": "Log out",
     "drawer.title": "Notifications",
-    "discover.label": "DISCOVERY", "discover.open": "3 open",
+    "discover.label": "DISCOVERY", "discover.open": "0 open",
     "discover.title1": "Find the right crew", "discover.title2": "without friction",
     "discover.sub": "Filter by role, region, and production window. Joining requires authentication and clearly communicates policy.",
     "discover.footer": "More projects loading as crews publish their calls",
@@ -126,7 +126,8 @@ const i18n = {
     "slot.filled": "filled",
     "mypage.label": "MY PAGE", "mypage.title": "Your projects",
     "mypage.created": "Created", "mypage.joined": "Joined",
-    "btn.edit": "Edit", "btn.delete": "Delete", "btn.cancel": "Cancel",
+    "btn.edit": "Edit", "btn.delete": "Delete", "btn.cancel": "Cancel", "btn.save": "Save",
+    "edit.project.title": "Edit project", "notif.project.deleted": "Project deleted.",
     "status.complete": "Completed",
     "ws.label": "WORKSPACE", "ws.back": "My Page",
     "ws.tab.chat": "Chat", "ws.tab.calendar": "Calendar",
@@ -162,7 +163,7 @@ const i18n = {
     "nav.project": "프로젝트", "nav.mypage": "마이페이지", "nav.hub": "협업 허브",
     "auth.login": "로그인", "auth.logout": "로그아웃",
     "drawer.title": "알림",
-    "discover.label": "작품 탐색", "discover.open": "3개 모집 중",
+    "discover.label": "작품 탐색", "discover.open": "0개 모집 중",
     "discover.title1": "번거로움 없이", "discover.title2": "딱 맞는 크루를 찾으세요",
     "discover.sub": "역할, 지역, 촬영 기간으로 원하는 프로젝트를 찾으세요. 참여 신청은 로그인 후 가능하며 취소 패널티 정책을 명확히 안내합니다.",
     "discover.footer": "새 프로젝트가 계속 추가되고 있습니다",
@@ -249,7 +250,8 @@ const i18n = {
     "slot.filled": "완료됨",
     "mypage.label": "마이페이지", "mypage.title": "내 프로젝트",
     "mypage.created": "생성한 프로젝트", "mypage.joined": "참여한 프로젝트",
-    "btn.edit": "편집", "btn.delete": "삭제", "btn.cancel": "취소",
+    "btn.edit": "편집", "btn.delete": "삭제", "btn.cancel": "취소", "btn.save": "저장",
+    "edit.project.title": "프로젝트 편집", "notif.project.deleted": "프로젝트가 삭제되었습니다.",
     "status.complete": "완료",
     "ws.label": "워크스페이스", "ws.back": "마이페이지",
     "ws.tab.chat": "채팅", "ws.tab.calendar": "캘린더",
@@ -323,6 +325,11 @@ const confirmDialog  = document.getElementById("confirmDialog");
 const confirmTitle   = document.getElementById("confirmTitle");
 const confirmBody    = document.getElementById("confirmBody");
 const confirmYes     = document.getElementById("confirmYes");
+const editProjectDialog  = document.getElementById("editProjectDialog");
+const editProjTitle      = document.getElementById("editProjTitle");
+const editProjDesc       = document.getElementById("editProjDesc");
+const editProjectSaveBtn = document.getElementById("editProjectSaveBtn");
+const editProjectCancelBtn = document.getElementById("editProjectCancelBtn");
 const preqDialog       = document.getElementById("preqDialog");
 const preqAnswerDialog = document.getElementById("preqAnswerDialog");
 const preqAnswerQ      = document.getElementById("preqAnswerQ");
@@ -379,36 +386,95 @@ function setScreen(id) {
 }
 
 /* ── PROJECT STATS ────────────────────────────────────────── */
-const ROLE_STATS = [
-  { role: "director",    count: 14 },
-  { role: "assdirector", count: 9  },
-  { role: "maleactor",   count: 31 },
-  { role: "femaleactor", count: 28 },
-  { role: "filming",     count: 22 },
-  { role: "music",       count: 11 },
-  { role: "editing",     count: 18 },
-  { role: "script",      count: 7  }
-];
+async function loadProjectStats() {
+  const [{ count: projCount }, { count: partCount }] = await Promise.all([
+    sbClient.from("projects").select("*", { count: "exact", head: true }),
+    sbClient.from("project_participants").select("*", { count: "exact", head: true })
+  ]);
+  document.getElementById("statProjects").textContent     = projCount ?? 0;
+  document.getElementById("statParticipants").textContent = partCount ?? 0;
+  document.getElementById("statActive").textContent       = projCount ?? 0;
+}
 
-function renderRoleStats() {
+async function loadRoleStats() {
   const el = document.getElementById("roleStatBars");
   if (!el) return;
-  const max = Math.max(...ROLE_STATS.map(r => r.count));
+  const { data, error } = await sbClient
+    .from("recruitment_details")
+    .select("role_name, headcount");
+  if (error || !data || data.length === 0) {
+    el.innerHTML = `<p class="card-empty">${lang === "ko" ? "역할 데이터가 없습니다." : "No role data yet."}</p>`;
+    return;
+  }
+  const counts = {};
+  data.forEach(r => { counts[r.role_name] = (counts[r.role_name] || 0) + (r.headcount || 1); });
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const max  = entries[0][1];
   const unit = lang === "ko" ? "명" : "";
-  el.innerHTML = ROLE_STATS.map(r => {
-    const pct = Math.round(r.count / max * 100);
+  el.innerHTML = entries.map(([role, count]) => {
+    const pct = Math.round(count / max * 100);
     return `<div class="stat-bar-row">
-      <span class="stat-bar-role">${t("role." + r.role)}</span>
+      <span class="stat-bar-role">${escapeHtml(role)}</span>
       <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
-      <span class="stat-bar-count">${r.count}${unit}</span>
+      <span class="stat-bar-count">${count}${unit}</span>
     </div>`;
   }).join("");
+}
+
+async function loadMyPage() {
+  const createdEl    = document.getElementById("createdList");
+  const joinedEl     = document.getElementById("joinedList");
+  const emptyCreated = `<li class="empty-item">${lang === "ko" ? "생성한 프로젝트가 없습니다." : "No projects created."}</li>`;
+  const emptyJoined  = `<li class="empty-item">${lang === "ko" ? "참여 중인 프로젝트가 없습니다." : "No projects joined."}</li>`;
+  if (!currentUser) {
+    createdEl.innerHTML = emptyCreated;
+    joinedEl.innerHTML  = emptyJoined;
+    return;
+  }
+  const [{ data: created, error: ce }, { data: participations, error: pe }] = await Promise.all([
+    sbClient.from("projects").select("id, title").eq("creator_id", currentUser.id).order("created_at", { ascending: false }),
+    sbClient.from("project_participants").select("project_id").eq("user_id", currentUser.id).order("created_at", { ascending: false })
+  ]);
+
+  // Second step: fetch project details for each participation row
+  let joined = [];
+  let je = pe;
+  if (!pe && participations?.length) {
+    const ids = participations.map(p => p.project_id);
+    const { data: joinedProjects, error: je2 } = await sbClient
+      .from("projects").select("id, title").in("id", ids);
+    je = je2;
+    joined = joinedProjects || [];
+  }
+  createdEl.innerHTML = (!ce && created?.length)
+    ? created.map(p => `<li class="list-item" data-project-id="${p.id}">
+        <span>${escapeHtml(p.title)}</span>
+        <div class="item-actions">
+          <button class="micro-btn edit-project-btn">${t("btn.edit")}</button>
+          <button class="micro-btn danger delete-project-btn">${t("btn.delete")}</button>
+        </div>
+      </li>`).join("")
+    : emptyCreated;
+  joinedEl.innerHTML = (!je && joined?.length)
+    ? joined.map(p => `<li class="list-item joined-card" data-project-id="${p.id}">
+        <div class="joined-info">
+          <span class="joined-title">${escapeHtml(p.title)}</span>
+          <span class="status-pill active">${t("ws.status.active")}</span>
+        </div>
+        <div class="item-actions">
+          <button class="micro-btn ws-open-btn">${t("ws.open")}</button>
+          <button class="micro-btn danger cancel-join-btn">${t("btn.cancel")}</button>
+        </div>
+      </li>`).join("")
+    : emptyJoined;
 }
 
 function showProjectStats() {
   document.getElementById("projectStatsPanel").classList.remove("hidden");
   document.getElementById("projectDetailPanel").classList.add("hidden");
   setScreen("project");
+  loadProjectStats();
+  loadRoleStats();
 }
 
 function showProjectDetail(title, desc) {
@@ -460,6 +526,7 @@ function updateAuthCopy() {
 /* ── EVENT LISTENERS ──────────────────────────────────────── */
 navItems.forEach(item => item.addEventListener("click", () => {
   if (item.dataset.screen === "project") { showProjectStats(); return; }
+  if (item.dataset.screen === "mypage")  { loadMyPage(); }
   setScreen(item.dataset.screen);
 }));
 
@@ -554,7 +621,18 @@ projectList.addEventListener("click", event => {
     () => {
       confirmTitle.textContent = t("confirm.join.title");
       confirmBody.textContent  = t("confirm.join.body");
-      confirmAction = () => { pushNotification(t("preq.answer.autojoin")); setScreen("mypage"); };
+      confirmAction = async () => {
+        if (currentUser) {
+          const insertPayload = { project_id: projId, user_id: currentUser.id };
+          console.log("[join] inserting project_participants:", insertPayload);
+          const { data: jpData, error } = await sbClient.from("project_participants").insert(insertPayload).select();
+          console.log("[join] insert result → data:", jpData, "error:", error);
+          if (error && error.code !== "23505") console.error("[join]", error.message);
+        }
+        pushNotification(t("preq.answer.autojoin"));
+        await loadMyPage();
+        setScreen("mypage");
+      };
       confirmDialog.showModal();
     },
     () => pushNotification(t("preq.answer.waiting"))
@@ -572,21 +650,19 @@ roleJoinBtns.forEach(btn => {
       () => {
         confirmTitle.textContent = lang === "ko" ? `${roleDisplay}로 참여` : `Join as ${roleDisplay}`;
         confirmBody.textContent  = t("confirm.join.body");
-        confirmAction = () => {
+        confirmAction = async () => {
           const msg = lang === "ko"
             ? `${detailTitle.textContent}에 ${roleDisplay}로 참여했습니다.`
             : `You joined ${detailTitle.textContent} as ${roleDisplay}.`;
-          if (!MOCK_WORKSPACES[projId]) {
-            MOCK_WORKSPACES[projId] = { title: detailTitle.textContent, chat: [], events: [] };
-          }
-          if (!document.querySelector(`.joined-card[data-project-id="${projId}"]`)) {
-            const li = document.createElement("li");
-            li.className = "list-item joined-card";
-            li.dataset.projectId = projId;
-            li.innerHTML = `<div class="joined-info"><span class="joined-title">${detailTitle.textContent}</span><span class="status-pill active">${t("ws.status.active")}</span></div><div class="item-actions"><button class="micro-btn ws-open-btn">${t("ws.open")}</button><button class="micro-btn danger cancel-join-btn">${t("btn.cancel")}</button></div>`;
-            document.getElementById("joinedList").prepend(li);
+          if (currentUser) {
+            const insertPayload = { project_id: projId, user_id: currentUser.id };
+            console.log("[role-join] inserting project_participants:", insertPayload);
+            const { data: jpData, error } = await sbClient.from("project_participants").insert(insertPayload).select();
+            console.log("[role-join] insert result → data:", jpData, "error:", error);
+            if (error && error.code !== "23505") console.error("[role-join]", error.message);
           }
           pushNotification(msg);
+          await loadMyPage();
           loadWorkspace(projId);
         };
         confirmDialog.showModal();
@@ -596,12 +672,73 @@ roleJoinBtns.forEach(btn => {
   });
 });
 
-confirmYes.addEventListener("click", () => {
-  if (typeof confirmAction === "function") confirmAction();
+confirmYes.addEventListener("click", async () => {
+  if (typeof confirmAction === "function") await confirmAction();
   confirmAction = null;
 });
 
-/* ── PROJECT CREATION — Supabase integration ──────────────── */
+/* ── CREATED LIST — Edit & Delete delegation ──────────────── */
+let _editingProjectId = null;
+
+createdList.addEventListener("click", async event => {
+  const editBtn   = event.target.closest(".edit-project-btn");
+  const deleteBtn = event.target.closest(".delete-project-btn");
+
+  if (editBtn) {
+    const li = editBtn.closest(".list-item");
+    if (!li) return;
+    _editingProjectId = li.dataset.projectId;
+    // Fetch current project data
+    const { data, error } = await sbClient.from("projects")
+      .select("title, description").eq("id", _editingProjectId).maybeSingle();
+    if (error) { console.error("[edit-project]", error.message); return; }
+    editProjTitle.value = data?.title || "";
+    editProjDesc.value  = data?.description || "";
+    editProjectDialog.showModal();
+  }
+
+  if (deleteBtn) {
+    const li = deleteBtn.closest(".list-item");
+    if (!li) return;
+    const projId = li.dataset.projectId;
+    confirmTitle.textContent = lang === "ko" ? "프로젝트 삭제" : "Delete project";
+    confirmBody.textContent  = lang === "ko"
+      ? "이 프로젝트를 삭제하면 복구할 수 없습니다. 계속하시겠습니까?"
+      : "This project will be permanently deleted. Continue?";
+    confirmAction = async () => {
+      const { error } = await sbClient.from("projects").delete().eq("id", projId);
+      if (error) { console.error("[delete-project]", error.message); return; }
+      li.remove();
+      pushNotification(t("notif.project.deleted"));
+      loadProjectStats();
+    };
+    confirmDialog.showModal();
+  }
+});
+
+editProjectSaveBtn.addEventListener("click", async () => {
+  if (!_editingProjectId) return;
+  const newTitle = editProjTitle.value.trim();
+  const newDesc  = editProjDesc.value.trim();
+  if (!newTitle) return;
+  const { error } = await sbClient.from("projects")
+    .update({ title: newTitle, description: newDesc })
+    .eq("id", _editingProjectId);
+  if (error) { console.error("[edit-project save]", error.message); return; }
+  // Update the list item title in DOM
+  const li = createdList.querySelector(`[data-project-id="${_editingProjectId}"]`);
+  if (li) li.querySelector("span").textContent = newTitle;
+  showToast(lang === "ko" ? "저장되었습니다." : "Saved.");
+  editProjectDialog.close();
+  _editingProjectId = null;
+});
+
+editProjectCancelBtn.addEventListener("click", () => {
+  editProjectDialog.close();
+  _editingProjectId = null;
+});
+
+
 
 /** Reads the create-form DOM and returns a plain data object. */
 function collectFormData() {
@@ -894,19 +1031,20 @@ chatForm.addEventListener("submit", async event => {
   if (!text || !activeProjectId) return;
   chatInput.value = "";
   chatInput.disabled = true;
-  const userEmail = currentUser?.email || (lang === "ko" ? "나" : "You");
-  const { error } = await sbClient.from("chat_messages").insert({
-    project_id: activeProjectId,
-    user_id:    currentUser?.id ?? null,
-    user_email: userEmail,
-    content:    text
-  });
+
+  const senderId = currentUser?.id ?? null;
+  const payload = { project_id: activeProjectId, sender_id: senderId, message: text };
+  console.log("[chat] inserting:", payload);
+
+  const { data: insertData, error } = await sbClient.from("chat_messages").insert(payload).select();
+  console.log("[chat] insert result → data:", insertData, "error:", error);
+
   chatInput.disabled = false;
   chatInput.focus();
   if (error) {
     console.error("[chat] insert failed:", error.message);
     // Fallback: show message locally so the user isn't left wondering
-    appendChatMsg(userEmail, text);
+    appendChatMsg(currentUser?.email || "나", text);
   }
   // On success the realtime subscription will append the message
   pushNotification(t("notif.chat"));
@@ -941,9 +1079,13 @@ async function loadDiscoverProjects() {
 
   if (error || !data || data.length === 0) {
     projectList.innerHTML = `<p class="card-empty">${lang === "ko" ? "등록된 프로젝트가 없습니다." : "No projects yet."}</p>`;
+    document.getElementById("openCount").textContent = lang === "ko" ? "0개 모집 중" : "0 open";
     applyFilters();
     return;
   }
+
+  document.getElementById("openCount").textContent =
+    lang === "ko" ? `${data.length}개 모집 중` : `${data.length} open`;
 
   data.forEach((proj, idx) => {
     const roles    = proj.recruitment_details || [];
@@ -987,36 +1129,10 @@ async function loadDiscoverProjects() {
 }
 
 /* ── INIT ─────────────────────────────────────────────────── */
-applyLang("en");
+applyLang("ko");
 loadDiscoverProjects();
 
 /* ── WORKSPACE ───────────────────────────────────────────────────────── */
-const MOCK_WORKSPACES = {
-  "warm-static": {
-    title: "Warm Static",
-    chat: [
-      { author: "Director", text: "팀 구성 완료. 금요일 킵오프 미팅 확인해주세요." },
-      { author: "Actor",    text: "네, 확인했습니다. 대본 미리 받을 수 있나요?" }
-    ],
-    events: [
-      { date: "2026-09-03", title: "킵오프 미팅" },
-      { date: "2026-09-05", title: "대본 리딩" },
-      { date: "2026-09-06", title: "촬영" }
-    ]
-  },
-  "noon-in-black": {
-    title: "Noon in Black",
-    chat: [
-      { author: "Composer", text: "음악 레퍼런스 공유드립니다." }
-    ],
-    events: [
-      { date: "2026-09-11", title: "킵오프 미팅" },
-      { date: "2026-09-15", title: "촬영 1일차" },
-      { date: "2026-09-23", title: "촬영 완료" }
-    ]
-  }
-};
-
 let activeProjectId = null;
 
 /* ── CHAT HELPERS ─────────────────────────────────────────── */
@@ -1046,7 +1162,10 @@ function subscribeChatChannel(projectId) {
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "chat_messages", filter: "project_id=eq." + projectId },
-      payload => { appendChatMsg(payload.new.user_email || "Guest", payload.new.content); }
+      payload => {
+        console.log("[chat] realtime INSERT payload:", payload.new);
+        appendChatMsg(payload.new.sender_id || "Guest", payload.new.message);
+      }
     )
     .subscribe();
 }
@@ -1062,13 +1181,23 @@ function renderWorkspaceChat(msgs) {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-function renderWorkspaceEvents(events) {
+async function loadWorkspaceEvents(projectId) {
   const el = document.getElementById("eventList");
   el.innerHTML = "";
-  events.forEach(ev => {
+  const { data, error } = await sbClient
+    .from("calendar_events")
+    .select("event_date, title")
+    .eq("project_id", projectId)
+    .order("event_date", { ascending: true });
+  if (error) { console.error("[events]", error.message); return; }
+  if (!data || data.length === 0) {
+    el.innerHTML = `<li class="empty-item">${lang === "ko" ? "등록된 일정이 없습니다." : "No events yet."}</li>`;
+    return;
+  }
+  data.forEach(ev => {
     const li = document.createElement("li");
     li.className = "event-item";
-    li.innerHTML = `<span class="event-date">${ev.date}</span><span>${ev.title}</span>`;
+    li.innerHTML = `<span class="event-date">${escapeHtml(ev.event_date)}</span><span>${escapeHtml(ev.title)}</span>`;
     el.appendChild(li);
   });
 }
@@ -1082,24 +1211,28 @@ function switchWsTab(tab) {
 async function loadWorkspace(projectId) {
   activeProjectId = projectId;
   history.replaceState(null, "", `#workspace/${projectId}`);
-  const mockData = MOCK_WORKSPACES[projectId];
-  document.getElementById("wsProjectTitle").textContent = mockData ? mockData.title : projectId;
-  if (mockData) renderWorkspaceEvents(mockData.events);
+  // Fetch project title from Supabase
+  const { data: proj } = await sbClient
+    .from("projects")
+    .select("title")
+    .eq("id", projectId)
+    .maybeSingle();
+  document.getElementById("wsProjectTitle").textContent = proj?.title || projectId;
   chatLog.innerHTML = "";
   switchWsTab("chat");
   setScreen("workspace");
   // Fetch chat history from Supabase
-  const { data: msgs, error } = await sbClient
+  const { data: msgs, error: msgsError } = await sbClient
     .from("chat_messages")
-    .select("user_email, content, created_at")
+    .select("sender_id, message, created_at")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true })
     .limit(100);
-  if (!error && msgs && msgs.length > 0) {
-    msgs.forEach(m => appendChatMsg(m.user_email || "Guest", m.content));
-  } else if (!error && mockData) {
-    renderWorkspaceChat(mockData.chat);
+  console.log("[chat] history fetch → rows:", msgs?.length ?? 0, "error:", msgsError);
+  if (!msgsError && msgs && msgs.length > 0) {
+    msgs.forEach(m => appendChatMsg(m.sender_id || "Guest", m.message));
   }
+  await loadWorkspaceEvents(projectId);
   subscribeChatChannel(projectId);
 }
 
@@ -1116,19 +1249,26 @@ document.querySelectorAll(".ws-tab").forEach(tab => {
   tab.addEventListener("click", () => switchWsTab(tab.dataset.tab));
 });
 
-document.getElementById("eventForm").addEventListener("submit", event => {
+document.getElementById("eventForm").addEventListener("submit", async event => {
   event.preventDefault();
   const dateEl  = document.getElementById("eventDate");
   const titleEl = document.getElementById("eventTitle");
-  const date  = dateEl.value || "TBD";
+  const date  = dateEl.value || null;
   const title = titleEl.value.trim();
-  if (!title) return;
-  if (activeProjectId && MOCK_WORKSPACES[activeProjectId]) {
-    MOCK_WORKSPACES[activeProjectId].events.push({ date, title });
-    renderWorkspaceEvents(MOCK_WORKSPACES[activeProjectId].events);
+  if (!title || !activeProjectId) return;
+  const { error } = await sbClient.from("calendar_events").insert({
+    project_id: activeProjectId,
+    event_date: date,
+    title:      title
+  });
+  if (error) {
+    console.error("[calendar] insert failed:", error.message);
+    showToast(lang === "ko" ? "일정 저장 실패" : "Failed to save event");
+    return;
   }
-  dateEl.value = "";
+  dateEl.value  = "";
   titleEl.value = "";
+  await loadWorkspaceEvents(activeProjectId);
 });
 
 document.getElementById("joinedList").addEventListener("click", event => {
@@ -1142,9 +1282,17 @@ document.getElementById("joinedList").addEventListener("click", event => {
   if (cancelBtn) {
     const card = cancelBtn.closest(".joined-card");
     if (!card) return;
+    const cancelProjectId = card.dataset.projectId;
     confirmTitle.textContent = t("confirm.cancel.title");
     confirmBody.textContent  = t("confirm.cancel.body");
-    confirmAction = () => {
+    confirmAction = async () => {
+      if (currentUser && cancelProjectId) {
+        const { error } = await sbClient.from("project_participants")
+          .delete()
+          .eq("project_id", cancelProjectId)
+          .eq("user_id", currentUser.id);
+        if (error) console.error("[cancel-join]", error.message);
+      }
       card.remove();
       pushNotification(t("notif.participation.cancelled"));
     };
@@ -1153,27 +1301,29 @@ document.getElementById("joinedList").addEventListener("click", event => {
 });
 
 /* ── MOCK PROJECT DATA (for preq demo) ─────────────────────── */
-const MOCK_PROJECTS = {
-  "glass-corridor": { preq: "\ucd2c\uc601 \ud604\uc7a5 \uacbd\ud5d8\uc774 1\ub144 \uc774\uc0c1 \uc788\uc73c\uc2e0\uac00\uc694?", required: "yes" },
-  "warm-static":    { preq: "", required: "none" },
-  "noon-in-black":  { preq: "", required: "none" }
-};
-
 /* ── PRE-QUESTION LOGIC ─────────────────────────────────────── */
 let currentPreq = { text: "", required: "none" };
 
-function initiateJoin(projId, onApproved, onWaiting) {
-  const proj = MOCK_PROJECTS[projId];
-  if (!proj || !proj.preq) { onApproved(); return; }
-  preqAnswerQ.textContent = proj.preq;
+async function initiateJoin(projId, onApproved, onWaiting) {
+  // Fetch pre-screening question from Supabase
+  const { data, error } = await sbClient
+    .from("project_questions")
+    .select("question_text, target_answer")
+    .eq("project_id", projId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (error) console.error("[preq]", error.message);
+  if (!data || !data.question_text) { onApproved(); return; }
+  preqAnswerQ.textContent = data.question_text;
+  const required = data.target_answer || "none";
   const cleanup = () => { preqAnswerYes.onclick = null; preqAnswerNo.onclick = null; };
   preqAnswerYes.onclick = () => {
     cleanup(); preqAnswerDialog.close();
-    (proj.required === "none" || proj.required === "yes") ? onApproved() : onWaiting();
+    (required === "none" || required === "yes") ? onApproved() : onWaiting();
   };
   preqAnswerNo.onclick = () => {
     cleanup(); preqAnswerDialog.close();
-    (proj.required === "none" || proj.required === "no") ? onApproved() : onWaiting();
+    (required === "none" || required === "no") ? onApproved() : onWaiting();
   };
   preqAnswerDialog.showModal();
 }
