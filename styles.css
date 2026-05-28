@@ -760,29 +760,38 @@ textarea { min-height: 110px; resize: vertical; }
 .manage-project-btn:hover { background: rgba(232,160,32,0.08); border-color: var(--cta); }
 
 /* ── PROJECT DETAIL MODAL ─────────────────────────────────── */
-.project-detail-modal {
+/* Use compound selector to beat the base .modal width/padding rules */
+.modal.project-detail-modal {
   width: min(860px, calc(100vw - 32px));
   max-height: 90vh;
   overflow-y: auto;
-  padding: 36px 40px 40px;
+  padding: 32px 40px 40px;
   position: relative;
 }
-.project-detail-modal .modal-x-btn {
+.modal.project-detail-modal .modal-x-btn {
   position: sticky;
   top: 0;
   float: right;
+  margin-bottom: -28px;
 }
 .project-detail-modal-body {
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 48px;
-  margin-top: 8px;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 40px;
+  margin-top: 12px;
+  align-items: start;
+  clear: both;
 }
-.project-detail-modal-body .detail-main { min-width: 0; }
+.project-detail-modal-body .detail-main {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 .project-detail-modal-body .detail-main .display-title { font-size: 26px; }
-.project-detail-modal-body #modalDetailDesc { white-space: pre-wrap; }
+.project-detail-modal-body #modalDetailDesc { white-space: pre-wrap; word-break: break-word; }
 @media (max-width: 680px) {
-  .project-detail-modal-body { grid-template-columns: 1fr; gap: 28px; }
+  .modal.project-detail-modal { padding: 24px 20px 28px; }
+  .project-detail-modal-body  { grid-template-columns: 1fr; gap: 28px; }
 }
 
 /* ?�?�?� MY PAGE ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
