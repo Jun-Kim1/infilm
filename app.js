@@ -390,22 +390,49 @@ function setScreen(id) {
 }
 
 /* ── PROJECT STATS ────────────────────────────────────────── */
-async function loadProjectStats() {
-  const [{ count: projCount }, { count: partCount }] = await Promise.all([
-    sbClient.from("projects").select("*", { count: "exact", head: true }),
-    sbClient.from("project_participants").select("*", { count: "exact", head: true })
+async function loadProjectStats(projectId) {
+  const [
+    { count: partCount, error: pcErr },
+    { data:  recData,  error: rcErr  },
+    { data:  projRow,  error: prErr  }
+  ] = await Promise.all([
+    sbClient.from("project_participants")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", projectId),
+    sbClient.from("recruitment_details")
+      .select("headcount")
+      .eq("project_id", projectId),
+    sbClient.from("projects")
+      .select("closing_date")
+      .eq("id", projectId)
+      .single()
   ]);
-  document.getElementById("statProjects").textContent     = projCount ?? 0;
+
+  if (pcErr) console.error("[stats] participants count error:", pcErr.message);
+  if (rcErr) console.error("[stats] recruitment details error:", rcErr.message);
+  if (prErr) console.error("[stats] project fetch error:", prErr.message);
+
+  const totalSlots = (recData || []).reduce((sum, r) => sum + (r.headcount || 0), 0);
+  const isActive   = projRow?.closing_date ? new Date(projRow.closing_date) > new Date() : true;
+
+  document.getElementById("statProjects").textContent     = totalSlots > 0 ? totalSlots : "–";
   document.getElementById("statParticipants").textContent = partCount ?? 0;
-  document.getElementById("statActive").textContent       = projCount ?? 0;
+  document.getElementById("statActive").textContent       = isActive
+    ? (lang === "ko" ? "모집 중" : "Open")
+    : (lang === "ko" ? "마감"   : "Closed");
+
+  const kpiSlots  = document.getElementById("kpiLabelSlots");
+  const kpiStatus = document.getElementById("kpiLabelStatus");
+  if (kpiSlots)  kpiSlots.textContent  = lang === "ko" ? "모집 인원" : "Open Slots";
+  if (kpiStatus) kpiStatus.textContent = lang === "ko" ? "모집 상태" : "Status";
 }
 
-async function loadRoleStats() {
+async function loadRoleStats(projectId) {
   const el = document.getElementById("roleStatBars");
   if (!el) return;
-  const { data, error } = await sbClient
-    .from("recruitment_details")
-    .select("role_name, headcount");
+  let query = sbClient.from("recruitment_details").select("role_name, headcount");
+  if (projectId) query = query.eq("project_id", projectId);
+  const { data, error } = await query;
   if (error || !data || data.length === 0) {
     el.innerHTML = `<p class="card-empty">${lang === "ko" ? "역할 데이터가 없습니다." : "No role data yet."}</p>`;
     return;
@@ -501,21 +528,61 @@ async function showProjectStats() {
     authMode = "login"; updateAuthCopy(); authDialog.showModal();
     return;
   }
-  // Restrict to project owners only
-  const { data: owned } = await sbClient
-    .from("projects").select("id").eq("creator_id", session.user.id).limit(1);
-  if (!owned?.length) {
-    showToast(lang === "ko" ? "프로젝트를 먼저 생성해야 이 화면에 접근할 수 있습니다." : "Create a project first to access this area.");
-    return;
-  }
-  // Close detail modal if open
+
+  // Navigate to screen immediately and show loading state
   const detailModal = document.getElementById("projectDetailModal");
   if (detailModal?.open) detailModal.close();
   document.getElementById("projectStatsPanel").classList.remove("hidden");
   document.getElementById("projectDetailPanel").classList.add("hidden");
   setScreen("project");
-  loadProjectStats();
-  loadRoleStats();
+
+  ["statProjects", "statParticipants", "statActive"].forEach(id => {
+    document.getElementById(id).textContent = "…";
+  });
+  document.getElementById("roleStatBars").innerHTML =
+    `<p class="card-empty">${lang === "ko" ? "불러오는 중…" : "Loading…"}</p>`;
+
+  // Fetch all projects owned by the current user
+  const { data: owned, error: ownedErr } = await sbClient
+    .from("projects")
+    .select("id, title")
+    .eq("creator_id", session.user.id)
+    .order("created_at", { ascending: false });
+
+  console.log("User projects:", owned);
+  if (ownedErr) console.error("[stats] ownership fetch error:", ownedErr.message);
+
+  if (!owned?.length) {
+    showToast(lang === "ko"
+      ? "프로젝트를 먼저 생성해야 이 화면에 접근할 수 있습니다."
+      : "Create a project first to access this area.");
+    ["statProjects", "statParticipants", "statActive"].forEach(id => {
+      document.getElementById(id).textContent = "–";
+    });
+    document.getElementById("roleStatBars").innerHTML = "";
+    return;
+  }
+
+  // Multi-project picker: only shown when user owns more than one project
+  const selectorWrap = document.getElementById("projectSelectorWrap");
+  const selector     = document.getElementById("projectSelector");
+  if (owned.length > 1) {
+    selector.innerHTML = owned
+      .map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.title)}</option>`)
+      .join("");
+    selectorWrap.classList.remove("hidden");
+    selector.onchange = () => {
+      loadProjectStats(selector.value);
+      loadRoleStats(selector.value);
+    };
+  } else {
+    selectorWrap.classList.add("hidden");
+  }
+
+  // Load stats for the first (or only) project
+  const firstId = owned[0].id;
+  loadProjectStats(firstId);
+  loadRoleStats(firstId);
 }
 
 

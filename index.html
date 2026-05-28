@@ -239,15 +239,21 @@
       <!-- ── Stats panel (default when nav is clicked) ────────── -->
       <div id="projectStatsPanel">
         <h2 class="display-title">
-          <span data-i18n="project.stats.title1">Platform</span><br>
-          <span data-i18n="project.stats.title2">at a glance</span>
+          <span data-i18n="project.stats.title1">Project</span><br>
+          <span data-i18n="project.stats.title2">Statistics</span>
         </h2>
-        <p class="display-sub" data-i18n="project.stats.sub">Cumulative activity across all InFilm productions.</p>
+        <p class="display-sub" data-i18n="project.stats.sub">Recruitment activity for your project.</p>
+
+        <!-- shown only when user owns >1 project -->
+        <div id="projectSelectorWrap" class="project-selector-wrap hidden">
+          <label class="stats-breakdown-label" for="projectSelector" data-i18n="stat.select.project">프로젝트 선택</label>
+          <select id="projectSelector" class="project-selector-select"></select>
+        </div>
 
         <div class="stats-kpi-row">
           <div class="kpi-card">
             <span class="kpi-value" id="statProjects">–</span>
-            <span class="kpi-label" data-i18n="stat.projects">Projects</span>
+            <span class="kpi-label" id="kpiLabelSlots" data-i18n="stat.slots">모집 인원</span>
           </div>
           <div class="kpi-card">
             <span class="kpi-value" id="statParticipants">–</span>
@@ -255,7 +261,7 @@
           </div>
           <div class="kpi-card">
             <span class="kpi-value" id="statActive">–</span>
-            <span class="kpi-label" data-i18n="stat.active">Recruiting</span>
+            <span class="kpi-label" id="kpiLabelStatus" data-i18n="stat.status">모집 상태</span>
           </div>
         </div>
 
