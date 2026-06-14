@@ -84,7 +84,7 @@ function hashPassword(password) {
 app.post("/api/cinetmi/tmi-posts", async (req, res) => {
   try {
     const { nickname, password, category, content, content_id } = req.body || {};
-    const allowedCategories = new Set(["story", "chat", "homage"]);
+    const allowedCategories = new Set(["오마주", "스토리", "감독", "배우", "미장센", "비하인드", "잡담"]);
 
     if (!nickname || !category || !content || !content_id) {
       return res.status(400).json({ message: "nickname, category, content, content_id are required" });

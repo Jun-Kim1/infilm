@@ -354,15 +354,25 @@
         </section>
 
         <section id="tasteStepTmi" class="taste-step hidden">
-          <p class="taste-step-copy" data-i18n="taste.step2.copy">카테고리와 추천 이유를 입력해 주세요.</p>
+          <p class="taste-step-copy" id="tasteStep2Copy" data-i18n="taste.step2.copy">당신이 선택한 영화에 대해 당신만 아는 TMI 혹은 추천하고 싶은 이유를 들려주세요.</p>
           <label class="form-field">
             <span data-i18n="taste.category.label">카테고리</span>
-            <select id="tasteCategory">
-              <option value="" data-i18n="taste.category.ph">카테고리 선택</option>
-              <option value="story" data-i18n="taste.category.story">스토리</option>
-              <option value="chat" data-i18n="taste.category.chat">잡담</option>
-              <option value="homage" data-i18n="taste.category.homage">오마주</option>
-            </select>
+            <div id="tasteCategory" class="csel csel-full taste-category-csel" data-value="">
+              <button type="button" class="csel-trigger">
+                <span class="csel-label" data-i18n="taste.category.ph">카테고리 선택</span>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <ul class="csel-panel">
+                <li class="csel-opt csel-selected" data-value="" data-i18n="taste.category.ph">카테고리 선택</li>
+                <li class="csel-opt" data-value="오마주" data-i18n="taste.category.homage">오마주</li>
+                <li class="csel-opt" data-value="스토리" data-i18n="taste.category.story">스토리</li>
+                <li class="csel-opt" data-value="감독" data-i18n="taste.category.directing">감독</li>
+                <li class="csel-opt" data-value="배우" data-i18n="taste.category.acting">배우</li>
+                <li class="csel-opt" data-value="미장센" data-i18n="taste.category.miseen">미장센</li>
+                <li class="csel-opt" data-value="비하인드" data-i18n="taste.category.behind">비하인드</li>
+                <li class="csel-opt" data-value="잡담" data-i18n="taste.category.chat">잡담</li>
+              </ul>
+            </div>
           </label>
           <label class="form-field">
             <span data-i18n="taste.comment.label">추천 이유</span>

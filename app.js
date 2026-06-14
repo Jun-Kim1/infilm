@@ -1223,7 +1223,7 @@ tasteStepBackBtn?.addEventListener("click", () => {
 
 tasteSubmitBtn?.addEventListener("click", async () => {
   if (!pendingSignupDraft) return;
-  const ALLOWED_TASTE_CATEGORIES = new Set(["homage", "story", "directing", "acting", "mise_en_scene", "behind", "chat"]);
+  const ALLOWED_TASTE_CATEGORIES = new Set(["오마주", "스토리", "감독", "배우", "미장센", "비하인드", "잡담"]);
   const category = getTasteCategoryValue();
   const content = tasteContent?.value.trim() || "";
   const normalizedContent = content.replace(/\s+/g, " ").trim();
