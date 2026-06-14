@@ -1,7 +1,9 @@
 /* --- SUPABASE ------------------------------------------- */
 const SUPABASE_URL = "https://fexwivtwuxsrjfrkqgam.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8JpAW0UnLFAGErcJw26Zig_5_30AJ1a";
-const INTERNAL_API_BASE = "";
+const API_BASE_META = document.querySelector('meta[name="internal-api-base"]')?.getAttribute("content")?.trim() || "";
+const API_BASE_GLOBAL = typeof window.__INTERNAL_API_BASE__ === "string" ? window.__INTERNAL_API_BASE__.trim() : "";
+const INTERNAL_API_BASE = (API_BASE_GLOBAL || API_BASE_META || "").replace(/\/+$/, "");
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -308,7 +310,7 @@ const i18n = {
     "modal.login.title": "로그인", "modal.signup.title": "계정 만들기",
     "modal.email": "이메일", "modal.pass": "비밀번호", "modal.name": "표시 이름",
     "taste.title": "영화 취향 등록",
-    "taste.step1.copy": "가입 완료 전에 영화 한 편을 선택해 주세요.",
+    "taste.step1.copy": "당신이 가장 좋아하는 영화 한 편을 선택해 주세요.",
     "taste.step2.copy": "카테고리와 추천 이유를 입력해 주세요.",
     "taste.search.ph": "영화 제목 검색",
     "taste.search.btn": "검색",
@@ -432,6 +434,8 @@ let pendingSignupDraft = null;
 let selectedTasteMovie = null;
 let signupFlowState = "account";
 let selectedRegionCard = null;
+let tasteSearchDebounceTimer = null;
+let tasteSearchRequestSeq = 0;
 
 const REGION_CITY_LOOKUP = Object.freeze({
   seoul:      { labels: { ko: "서울", en: "Seoul" } },
@@ -899,6 +903,8 @@ function setSignupFlowState(nextState) {
 
 function resetTasteSignupFlow() {
   selectedTasteMovie = null;
+  clearTimeout(tasteSearchDebounceTimer);
+  tasteSearchRequestSeq += 1;
   if (tasteMovieQuery) tasteMovieQuery.value = "";
   if (tasteMovieResults) tasteMovieResults.innerHTML = "";
   if (tasteCategory) tasteCategory.value = "";
@@ -922,10 +928,19 @@ function renderTasteSearchResults(movies) {
   }
 
   tasteMovieResults.innerHTML = movies.slice(0, 10).map(movie => {
-    const year = (movie.release_date || "").slice(0, 4) || "-";
-    return `<button type="button" class="taste-movie-item" data-id="${movie.id}" data-title="${escapeHtml(movie.title || "")}">
-      <span class="taste-movie-title">${escapeHtml(movie.title || "Untitled")}</span>
-      <span class="taste-movie-meta">${escapeHtml(year)} · TMDB ID ${movie.id}</span>
+    const title = movie.title || movie.name || "Untitled";
+    const year = (movie.release_date || movie.first_air_date || "").slice(0, 4) || "-";
+    const mediaType = String(movie.media_type || (movie.first_air_date ? "tv" : "movie")).toUpperCase();
+    const posterPath = movie.poster_path ? `https://image.tmdb.org/t/p/w92${movie.poster_path}` : "";
+    const selectedClass = selectedTasteMovie?.id === Number(movie.id) ? " is-selected" : "";
+    return `<button type="button" class="taste-movie-item${selectedClass}" data-id="${movie.id}" data-title="${escapeHtml(title)}" data-type="${escapeHtml(mediaType)}">
+      ${posterPath
+        ? `<img class="taste-movie-poster" src="${escapeHtml(posterPath)}" alt="${escapeHtml(title)} poster" loading="lazy" />`
+        : `<span class="taste-movie-poster taste-movie-poster--empty">NO IMAGE</span>`}
+      <span class="taste-movie-info">
+        <span class="taste-movie-title">${escapeHtml(title)}</span>
+        <span class="taste-movie-meta">${escapeHtml(year)} · ${escapeHtml(mediaType)}</span>
+      </span>
     </button>`;
   }).join("");
 }
@@ -939,6 +954,21 @@ async function searchTmdbMovies(query) {
   if (!response.ok) throw new Error("TMDB_SEARCH_FAILED");
   const payload = await response.json();
   return payload?.results || payload?.data || [];
+}
+
+async function runTasteMovieSearch(query) {
+  if (!tasteMovieResults) return;
+  const seq = ++tasteSearchRequestSeq;
+  tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${lang === "ko" ? "검색 중…" : "Searching…"}</div>`;
+
+  try {
+    const movies = await searchTmdbMovies(query);
+    if (seq !== tasteSearchRequestSeq) return;
+    renderTasteSearchResults(movies);
+  } catch (error) {
+    if (seq !== tasteSearchRequestSeq) return;
+    tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${escapeHtml(t("taste.search.error"))}</div>`;
+  }
 }
 
 async function saveTasteToCineTmi({ nickname, password, category, content, movieId }) {
@@ -1094,17 +1124,35 @@ tasteSignupCancel?.addEventListener("click", () => {
 
 tasteMovieSearchBtn?.addEventListener("click", async () => {
   const query = tasteMovieQuery?.value.trim() || "";
-  if (!query) return;
+  if (!query) {
+    tasteMovieResults.innerHTML = "";
+    return;
+  }
+  if (query.length < 2) {
+    tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${lang === "ko" ? "2글자 이상 입력해 주세요." : "Type at least 2 characters."}</div>`;
+    return;
+  }
   if (!tasteMovieResults) return;
 
-  tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${lang === "ko" ? "검색 중…" : "Searching…"}</div>`;
-  try {
-    const movies = await searchTmdbMovies(query);
-    renderTasteSearchResults(movies);
-  } catch (error) {
-    const key = error.message === "SEARCH_API_MISSING" ? "taste.search.needKey" : "taste.search.error";
-    tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${escapeHtml(t(key))}</div>`;
+  await runTasteMovieSearch(query);
+});
+
+tasteMovieQuery?.addEventListener("input", () => {
+  const query = tasteMovieQuery.value.trim();
+  clearTimeout(tasteSearchDebounceTimer);
+
+  if (!query) {
+    tasteMovieResults.innerHTML = "";
+    return;
   }
+  if (query.length < 2) {
+    tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${lang === "ko" ? "2글자 이상 입력해 주세요." : "Type at least 2 characters."}</div>`;
+    return;
+  }
+
+  tasteSearchDebounceTimer = setTimeout(() => {
+    runTasteMovieSearch(query);
+  }, 280);
 });
 
 tasteMovieQuery?.addEventListener("keydown", event => {
@@ -1118,10 +1166,12 @@ tasteMovieResults?.addEventListener("click", event => {
   if (!btn) return;
   selectedTasteMovie = {
     id: Number(btn.dataset.id),
-    title: btn.dataset.title || ""
+    title: btn.dataset.title || "",
+    mediaType: btn.dataset.type || "MOVIE"
   };
+  tasteMovieResults.innerHTML = "";
   tasteMovieSelected?.classList.remove("hidden");
-  tasteMovieSelected.textContent = `${t("taste.selected")}: ${selectedTasteMovie.title} (ID ${selectedTasteMovie.id})`;
+  tasteMovieSelected.textContent = `${t("taste.selected")}: ${selectedTasteMovie.title} · ${selectedTasteMovie.mediaType} (ID ${selectedTasteMovie.id})`;
 });
 
 tasteStepNextBtn?.addEventListener("click", () => {

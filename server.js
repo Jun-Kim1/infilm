@@ -1,8 +1,3 @@
-// Render Web Service example (Node.js + Express)
-// Purpose:
-// 1) Proxy TMDB movie search with server-side API key
-// 2) Save CineTMI tmi_posts with hashed password using server-side Supabase key
-
 const express = require("express");
 const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
@@ -16,20 +11,26 @@ const {
   INFILM_SUPABASE_URL,
   CINETMI_SUPABASE_URL,
   CINETMI_SUPABASE_SERVICE_ROLE_KEY,
-  CORS_ORIGIN = "https://your-infilm-domain.onrender.com"
+  CORS_ORIGIN = "https://infilm.onrender.com"
 } = process.env;
 
-if (!TMDB_API_KEY || !CINETMI_SUPABASE_URL || !CINETMI_SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("Missing required env vars.");
+const hasRequiredEnv = Boolean(
+  TMDB_API_KEY && CINETMI_SUPABASE_URL && CINETMI_SUPABASE_SERVICE_ROLE_KEY
+);
+
+if (!hasRequiredEnv) {
+  console.error("Missing required env vars: TMDB_API_KEY, CINETMI_SUPABASE_URL, CINETMI_SUPABASE_SERVICE_ROLE_KEY");
 }
 
 if (INFILM_SUPABASE_URL && INFILM_SUPABASE_URL === CINETMI_SUPABASE_URL) {
   throw new Error("INFILM_SUPABASE_URL and CINETMI_SUPABASE_URL must be different.");
 }
 
-const cineSb = createClient(CINETMI_SUPABASE_URL, CINETMI_SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false }
-});
+const cineSb = CINETMI_SUPABASE_URL && CINETMI_SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(CINETMI_SUPABASE_URL, CINETMI_SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false }
+  })
+  : null;
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -39,13 +40,26 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
+  return next();
 });
 
-app.get("/api/tmdb/search", async (req, res) => {
+app.get("/api/health", (_req, res) => {
+  return res.json({
+    ok: true,
+    tmdbConfigured: Boolean(TMDB_API_KEY),
+    cineConfigured: Boolean(CINETMI_SUPABASE_URL && CINETMI_SUPABASE_SERVICE_ROLE_KEY)
+  });
+});
+
+async function handleTmdbSearch(req, res) {
   try {
+    if (!TMDB_API_KEY) {
+      return res.status(500).json({ message: "TMDB_API_KEY is not configured" });
+    }
+
     const query = String(req.query.query || "").trim();
     const lang = String(req.query.lang || "ko-KR");
+
     if (!query) return res.status(400).json({ message: "query is required" });
     if (query.length < 2 || query.length > 80) {
       return res.status(400).json({ message: "query length must be 2-80" });
@@ -69,10 +83,13 @@ app.get("/api/tmdb/search", async (req, res) => {
       }));
 
     return res.json({ results });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "search failed" });
   }
-});
+}
+
+app.get("/api/tmdb/search", handleTmdbSearch);
+app.get("/api/search-movie", handleTmdbSearch);
 
 function hashPassword(password) {
   const iterations = 120000;
@@ -83,6 +100,10 @@ function hashPassword(password) {
 
 app.post("/api/cinetmi/tmi-posts", async (req, res) => {
   try {
+    if (!cineSb) {
+      return res.status(500).json({ message: "CineTMI DB env is not configured" });
+    }
+
     const { nickname, password, category, content, content_id } = req.body || {};
     const allowedCategories = new Set(["story", "chat", "homage"]);
 
@@ -122,11 +143,12 @@ app.post("/api/cinetmi/tmi-posts", async (req, res) => {
 
     if (error) return res.status(500).json({ message: error.message });
     return res.status(201).json({ ok: true });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ message: "save failed" });
   }
 });
 
 app.listen(PORT, () => {
   console.log(`API server listening on ${PORT}`);
+  console.log(`TMDB_API_KEY loaded: ${TMDB_API_KEY ? "yes" : "no"}`);
 });
