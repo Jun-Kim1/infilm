@@ -19,6 +19,9 @@
 
   <!-- ─── TOPBAR ─────────────────────────────────────────────── -->
   <header class="topbar">
+    <button class="svc-toggle-btn" id="svcToggleBtn" type="button" aria-label="Toggle service menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <a class="wordmark" href="#">InFilm</a>
 
     <nav class="top-nav" aria-label="Main navigation">
@@ -339,7 +342,6 @@
       </section>
 
       <section id="authStepTaste" class="hidden">
-        <p class="taste-step-copy" data-i18n="taste.step1.copy">당신이 가장 좋아하는 영화 한 편을 선택해 주세요.</p>
         <section id="tasteStepMovie" class="taste-step">
           <div class="taste-search-row">
             <input id="tasteMovieQuery" type="text" data-i18n-ph="taste.search.ph" placeholder="영화 제목 검색" />
@@ -355,7 +357,7 @@
 
         <section id="tasteStepTmi" class="taste-step hidden">
           <p class="taste-step-copy" id="tasteStep2Copy" data-i18n="taste.step2.copy">당신이 선택한 영화에 대해 당신만 아는 TMI 혹은 추천하고 싶은 이유를 들려주세요.</p>
-          <label class="form-field">
+          <div class="form-field">
             <span data-i18n="taste.category.label">카테고리</span>
             <div id="tasteCategory" class="csel csel-full taste-category-csel" data-value="">
               <button type="button" class="csel-trigger">
@@ -373,7 +375,7 @@
                 <li class="csel-opt" data-value="잡담" data-i18n="taste.category.chat">잡담</li>
               </ul>
             </div>
-          </label>
+          </div>
           <label class="form-field">
             <span data-i18n="taste.comment.label">추천 이유</span>
             <textarea id="tasteContent" maxlength="500" data-i18n-ph="taste.comment.ph" placeholder="이 영화를 추천하는 이유를 적어주세요."></textarea>
@@ -504,7 +506,8 @@
   </dialog>
 
   <!-- ─── SERVICE SIDEBAR ───────────────────────────────────── -->
-  <nav class="service-sidebar" aria-label="Service switcher">
+  <div class="service-sidebar-backdrop" id="serviceSidebarBackdrop"></div>
+  <nav class="service-sidebar" id="serviceSidebar" aria-label="Service switcher">
     <!-- InFilm (current) -->
     <a class="svc-icon svc-active" href="https://infilm.onrender.com/" aria-label="InFilm">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

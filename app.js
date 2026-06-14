@@ -378,6 +378,9 @@ const projectList    = document.getElementById("projectList");
 const roleJoinBtns   = [...document.querySelectorAll(".role-join")];
 const notifyDrawer   = document.getElementById("notifyDrawer");
 const drawerOverlay  = document.getElementById("drawerOverlay");
+const serviceSidebar = document.getElementById("serviceSidebar");
+const serviceSidebarBackdrop = document.getElementById("serviceSidebarBackdrop");
+const svcToggleBtn   = document.getElementById("svcToggleBtn");
 const notifyBtn      = document.getElementById("notifyBtn");
 const notifyDot      = document.getElementById("notifyDot");
 const closeNotify    = document.getElementById("closeNotify");
@@ -1070,8 +1073,22 @@ function closeDrawer() {
   notifyDrawer.classList.remove("open");
   drawerOverlay.classList.remove("visible");
 }
+
+function closeServiceSidebar() {
+  serviceSidebar?.classList.remove("is-open");
+  serviceSidebarBackdrop?.classList.remove("visible");
+}
+
 closeNotify.addEventListener("click", closeDrawer);
 drawerOverlay.addEventListener("click", closeDrawer);
+svcToggleBtn?.addEventListener("click", () => {
+  serviceSidebar?.classList.toggle("is-open");
+  serviceSidebarBackdrop?.classList.toggle("visible", serviceSidebar?.classList.contains("is-open"));
+});
+serviceSidebarBackdrop?.addEventListener("click", closeServiceSidebar);
+window.addEventListener("resize", () => {
+  if (window.innerWidth > 900) closeServiceSidebar();
+});
 
 authBtn.addEventListener("click", async () => {
   if (state.authed) {
@@ -1592,6 +1609,7 @@ document.addEventListener("click", e => {
   const trigger = e.target.closest(".csel-trigger");
   const opt     = e.target.closest(".csel-opt");
   if (trigger) {
+    e.preventDefault();
     const csel   = trigger.closest(".csel");
     const wasOpen = csel.classList.contains("csel-open");
     document.querySelectorAll(".csel.csel-open").forEach(s => s.classList.remove("csel-open"));
@@ -1600,6 +1618,7 @@ document.addEventListener("click", e => {
     return;
   }
   if (opt) {
+    e.preventDefault();
     const csel = opt.closest(".csel");
     csel.dataset.value = opt.dataset.value;
     csel.querySelector(".csel-label").textContent = opt.textContent;
