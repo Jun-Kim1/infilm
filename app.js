@@ -153,7 +153,7 @@ const i18n = {
     "modal.email": "Email", "modal.pass": "Password", "modal.name": "Display name",
     "taste.title": "Register your film taste",
     "taste.step1.copy": "Select one movie before completing sign-up.",
-    "taste.step2.copy": "Choose a category and write your reason.",
+    "taste.step2.copy": "Share your TMI or recommendation for the movie you picked.",
     "taste.search.ph": "Search movie title",
     "taste.search.btn": "Search",
     "taste.search.empty": "No movie results found.",
@@ -165,6 +165,10 @@ const i18n = {
     "taste.category.label": "Category",
     "taste.category.ph": "Select category",
     "taste.category.story": "Story",
+    "taste.category.directing": "Directing",
+    "taste.category.acting": "Acting",
+    "taste.category.miseen": "Mise-en-scene",
+    "taste.category.behind": "Behind",
     "taste.category.chat": "Chat",
     "taste.category.homage": "Homage",
     "taste.comment.label": "Reason",
@@ -309,7 +313,7 @@ const i18n = {
     "modal.email": "이메일", "modal.pass": "비밀번호", "modal.name": "표시 이름",
     "taste.title": "영화 취향 등록",
     "taste.step1.copy": "당신이 가장 좋아하는 영화 한 편을 선택해 주세요.",
-    "taste.step2.copy": "카테고리와 추천 이유를 입력해 주세요.",
+    "taste.step2.copy": "당신이 선택한 영화에 대해 당신만 아는 TMI 혹은 추천하고 싶은 이유를 들려주세요.",
     "taste.search.ph": "영화 제목 검색",
     "taste.search.btn": "검색",
     "taste.search.empty": "검색 결과가 없습니다.",
@@ -321,6 +325,10 @@ const i18n = {
     "taste.category.label": "카테고리",
     "taste.category.ph": "카테고리 선택",
     "taste.category.story": "스토리",
+    "taste.category.directing": "감독",
+    "taste.category.acting": "배우",
+    "taste.category.miseen": "미장센",
+    "taste.category.behind": "비하인드",
     "taste.category.chat": "잡담",
     "taste.category.homage": "오마주",
     "taste.comment.label": "추천 이유",
@@ -395,6 +403,7 @@ const tasteMovieSelected = document.getElementById("tasteMovieSelected");
 const tasteStepNextBtn   = document.getElementById("tasteStepNextBtn");
 const tasteStepBackBtn   = document.getElementById("tasteStepBackBtn");
 const tasteCategory      = document.getElementById("tasteCategory");
+const tasteStep2Copy     = document.getElementById("tasteStep2Copy");
 const tasteContent       = document.getElementById("tasteContent");
 const tasteSubmitBtn     = document.getElementById("tasteSubmitBtn");
 const tasteSignupCancel  = document.getElementById("tasteSignupCancel");
@@ -484,8 +493,34 @@ function applyLang(l) {
     const sel = csel.querySelector(`.csel-opt[data-value="${csel.dataset.value}"]`);
     if (sel) csel.querySelector(".csel-label").textContent = sel.textContent;
   });
+  updateTasteStep2Copy();
   loadRoleStats();
   loadDiscoverProjects();   // re-render cards with translated role/region labels
+}
+
+function getTasteCategoryValue() {
+  if (!tasteCategory) return "";
+  if (typeof tasteCategory.value === "string") return tasteCategory.value;
+  return tasteCategory.dataset.value || "";
+}
+
+function setTasteCategoryValue(value) {
+  if (!tasteCategory) return;
+  if (typeof tasteCategory.value === "string") {
+    tasteCategory.value = value;
+    return;
+  }
+  setCselValue(tasteCategory, value);
+}
+
+function updateTasteStep2Copy() {
+  if (!tasteStep2Copy) return;
+  const selectedMovieTitle = selectedTasteMovie?.title || (lang === "ko" ? "영화" : "movie");
+  if (lang === "ko") {
+    tasteStep2Copy.textContent = `당신이 선택한 ${selectedMovieTitle}! 이 영화에 대해 당신만 아는 TMI 혹은 추천하고 싶은 이유를 들려주세요.`;
+    return;
+  }
+  tasteStep2Copy.textContent = `You picked ${selectedMovieTitle}! Tell us your TMI or why you want to recommend this film.`;
 }
 
 /* ── SCREEN NAV ───────────────────────────────────────────── */
@@ -866,6 +901,7 @@ function setTasteStep(stepName) {
   const showMovie = stepName === "movie";
   tasteStepMovie?.classList.toggle("hidden", !showMovie);
   tasteStepTmi?.classList.toggle("hidden", showMovie);
+  if (!showMovie) updateTasteStep2Copy();
 }
 
 function setSignupFlowState(nextState) {
@@ -905,7 +941,7 @@ function resetTasteSignupFlow() {
   tasteSearchRequestSeq += 1;
   if (tasteMovieQuery) tasteMovieQuery.value = "";
   if (tasteMovieResults) tasteMovieResults.innerHTML = "";
-  if (tasteCategory) tasteCategory.value = "";
+  setTasteCategoryValue("");
   if (tasteContent) tasteContent.value = "";
   if (tasteMovieSelected) {
     tasteMovieSelected.classList.add("hidden");
@@ -970,7 +1006,7 @@ async function runTasteMovieSearch(query) {
 }
 
 async function saveTasteToCineTmi({ nickname, password, category, content, movieId }) {
-  const response = await fetch(`${INTERNAL_API_BASE}/api/cinetmi/tmi-posts`, {
+  const response = await fetch(`${INTERNAL_API_BASE}/api/tmi-posts`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -1170,6 +1206,7 @@ tasteMovieResults?.addEventListener("click", event => {
   tasteMovieResults.innerHTML = "";
   tasteMovieSelected?.classList.remove("hidden");
   tasteMovieSelected.textContent = `${t("taste.selected")}: ${selectedTasteMovie.title} · ${selectedTasteMovie.mediaType} (ID ${selectedTasteMovie.id})`;
+  updateTasteStep2Copy();
 });
 
 tasteStepNextBtn?.addEventListener("click", () => {
@@ -1186,8 +1223,8 @@ tasteStepBackBtn?.addEventListener("click", () => {
 
 tasteSubmitBtn?.addEventListener("click", async () => {
   if (!pendingSignupDraft) return;
-  const ALLOWED_TASTE_CATEGORIES = new Set(["story", "chat", "homage"]);
-  const category = tasteCategory?.value || "";
+  const ALLOWED_TASTE_CATEGORIES = new Set(["homage", "story", "directing", "acting", "mise_en_scene", "behind", "chat"]);
+  const category = getTasteCategoryValue();
   const content = tasteContent?.value.trim() || "";
   const normalizedContent = content.replace(/\s+/g, " ").trim();
 
