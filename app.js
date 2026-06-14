@@ -946,7 +946,7 @@ function renderTasteSearchResults(movies) {
 async function searchTmdbMovies(query) {
   if (!query || query.length < 2 || query.length > 80) throw new Error("INVALID_QUERY");
   const language = lang === "ko" ? "ko-KR" : "en-US";
-  const url = `${INTERNAL_API_BASE}/api/tmdb/search?query=${encodeURIComponent(query)}&lang=${encodeURIComponent(language)}`;
+  const url = `${INTERNAL_API_BASE}/api/tmdb/search/multi?query=${encodeURIComponent(query)}&language=${encodeURIComponent(language)}&include_adult=false`;
   const response = await fetch(url);
   if (response.status === 404) throw new Error("SEARCH_API_MISSING");
   if (!response.ok) throw new Error("TMDB_SEARCH_FAILED");
