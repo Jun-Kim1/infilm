@@ -1459,31 +1459,43 @@ textarea { min-height: 110px; resize: vertical; }
 }
 
 .taste-signup-wrap {
-  padding: 24px;
+  padding: 30px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 20px;
 }
 
 .taste-step {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
 }
 
 .taste-step-copy {
   margin: 0;
-  font-size: 13px;
+  font-size: 15px;
+  line-height: 1.55;
   color: var(--text-2);
 }
 
 .taste-search-row {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 8px;
+  gap: 12px;
+  align-items: center;
+}
+
+.taste-search-row input {
+  min-height: 44px;
+}
+
+.taste-search-row .ghost-btn {
+  min-height: 44px;
+  padding-inline: 16px;
 }
 
 .taste-movie-results {
+  margin-top: 4px;
   max-height: 230px;
   overflow-y: auto;
   border: 1px solid var(--border);
@@ -1565,11 +1577,20 @@ textarea { min-height: 110px; resize: vertical; }
 }
 
 .taste-movie-selected {
+  margin-top: 4px;
   border: 1px solid rgba(232,160,32,.3);
   border-radius: var(--r-m);
-  padding: 10px 12px;
+  padding: 12px 14px;
   background: rgba(232,160,32,.08);
   font-size: 13px;
+}
+
+#authStepTaste .modal-actions {
+  margin-top: 6px;
+}
+
+#tasteStepTmi .form-field {
+  gap: 8px;
 }
 
 /* ── DATE INPUT ─────────────────────────────────────────────── */
