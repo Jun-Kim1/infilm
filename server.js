@@ -11,7 +11,7 @@ const {
   INFILM_SUPABASE_URL,
   CINETMI_SUPABASE_URL,
   CINETMI_SUPABASE_SERVICE_ROLE_KEY,
-  ALLOWED_ORIGINS = "https://infilm.onrender.com"
+  ALLOWED_ORIGINS = "https://infilm.onrender.com,https://jun-kim1.github.io"
 } = process.env;
 
 const allowedOrigins = ALLOWED_ORIGINS

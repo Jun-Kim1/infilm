@@ -1,9 +1,7 @@
 /* --- SUPABASE ------------------------------------------- */
 const SUPABASE_URL = "https://fexwivtwuxsrjfrkqgam.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8JpAW0UnLFAGErcJw26Zig_5_30AJ1a";
-const API_BASE_META = document.querySelector('meta[name="internal-api-base"]')?.getAttribute("content")?.trim() || "";
-const API_BASE_GLOBAL = typeof window.__INTERNAL_API_BASE__ === "string" ? window.__INTERNAL_API_BASE__.trim() : "";
-const INTERNAL_API_BASE = (API_BASE_GLOBAL || API_BASE_META || "").replace(/\/+$/, "");
+const INTERNAL_API_BASE = "https://cinetmi.onrender.com";
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
