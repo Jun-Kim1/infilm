@@ -4,7 +4,6 @@ const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
-app.use(express.json());
 
 const {
   PORT = 3000,
@@ -19,6 +18,14 @@ const allowedOrigins = ALLOWED_ORIGINS
   .split(",")
   .map(origin => origin.trim())
   .filter(Boolean);
+
+const corsOptions = {
+  origin: allowedOrigins.length ? allowedOrigins : "https://infilm.onrender.com",
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
 
 const hasRequiredEnv = Boolean(
   TMDB_API_KEY && CINETMI_SUPABASE_URL && CINETMI_SUPABASE_SERVICE_ROLE_KEY
@@ -37,16 +44,6 @@ const cineSb = CINETMI_SUPABASE_URL && CINETMI_SUPABASE_SERVICE_ROLE_KEY
     auth: { persistSession: false }
   })
   : null;
-
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error("Not allowed by CORS"));
-  },
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"]
-}));
 
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -162,6 +159,7 @@ app.post("/api/cinetmi/tmi-posts", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`API server listening on ${PORT}`);
+  console.log("Allowed Origins:", process.env.ALLOWED_ORIGINS);
   console.log(`Allowed origins: ${allowedOrigins.length ? allowedOrigins.join(", ") : "(none)"}`);
   console.log(`TMDB_API_KEY loaded: ${TMDB_API_KEY ? "yes" : "no"}`);
 });
