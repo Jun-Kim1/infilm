@@ -1,6 +1,7 @@
 /* --- SUPABASE ------------------------------------------- */
 const SUPABASE_URL = "https://fexwivtwuxsrjfrkqgam.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8JpAW0UnLFAGErcJw26Zig_5_30AJ1a";
+const INTERNAL_API_BASE = "";
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -46,9 +47,15 @@ const i18n = {
     "auth.login": "Log in", "auth.logout": "Log out",
     "drawer.title": "Notifications",
     "discover.label": "DISCOVERY", "discover.open": "0 open",
-    "discover.title1": "Find the right crew", "discover.title2": "without friction",
-    "discover.sub": "Find projects by role, region, and shooting period.",
+    "discover.title1": "Find the right crew", "discover.title2": "or join the right project",
+    "discover.sub": "Discover the set that fits you best by role, region, and shooting period.",
     "discover.footer": "More projects loading as crews publish their calls",
+    "global.label": "01 - GLOBAL",
+    "global.title": "Regional recruiting activity",
+    "global.sub": "See where active projects are running across Korea.",
+    "global.empty": "No active projects to show yet.",
+    "global.viewMap": "View map",
+    "global.modalTitle": "Regional recruiting activity",
     "filter.role.label": "ROLE", "filter.region.label": "REGION", "filter.status.label": "STATUS",
     "status.all": "All", "status.open": "Recruiting", "status.closed": "Closed",
     "create.f.deadline": "Recruitment deadline",
@@ -144,6 +151,30 @@ const i18n = {
     "ws.status.active": "Active", "ws.open": "Workspace",
     "modal.login.title": "Log in", "modal.signup.title": "Create account",
     "modal.email": "Email", "modal.pass": "Password", "modal.name": "Display name",
+    "taste.title": "Register your film taste",
+    "taste.step1.copy": "Select one movie before completing sign-up.",
+    "taste.step2.copy": "Choose a category and write your reason.",
+    "taste.search.ph": "Search movie title",
+    "taste.search.btn": "Search",
+    "taste.search.empty": "No movie results found.",
+    "taste.search.needKey": "Movie search API is not configured.",
+    "taste.search.error": "Failed to search movies.",
+    "taste.next": "Next",
+    "taste.back": "Back",
+    "taste.submit": "Finish sign-up",
+    "taste.category.label": "Category",
+    "taste.category.ph": "Select category",
+    "taste.category.story": "Story",
+    "taste.category.chat": "Chat",
+    "taste.category.homage": "Homage",
+    "taste.comment.label": "Reason",
+    "taste.comment.ph": "Tell us why you recommend this movie.",
+    "taste.selected": "Selected movie",
+    "taste.validation.movie": "Please select a movie.",
+    "taste.validation.category": "Please choose a category.",
+    "taste.validation.content": "Please write your reason.",
+    "taste.partial": "Sign-up succeeded, but CineTMI save failed.",
+    "taste.saved": "Taste registration saved.",
     "modal.cancel": "Cancel", "modal.continue": "Continue",
     "modal.toSignup": "Need an account? Sign up", "modal.toLogin": "Already have an account? Log in",
     "modal.no": "No", "modal.yes": "Yes, continue",
@@ -171,9 +202,16 @@ const i18n = {
     "auth.login": "로그인", "auth.logout": "로그아웃",
     "drawer.title": "알림",
     "discover.label": "작품 탐색", "discover.open": "0개 모집 중",
-    "discover.title1": "번거로움 없이", "discover.title2": "딱 맞는 크루를 찾으세요",
-    "discover.sub": "역할, 지역, 촬영 기간으로 원하는 프로젝트를 찾으세요.",
+    "discover.title1": "번거로움 없이 딱 맞는 크루를 찾거나,",
+    "discover.title2": "프로젝트에 참여하세요",
+    "discover.sub": "역할, 지역, 촬영 기간으로 당신에게 딱 맞는 현장을 발견하세요.",
     "discover.footer": "새 프로젝트가 계속 추가되고 있습니다",
+    "global.label": "01 - GLOBAL",
+    "global.title": "지역별 모집 현황",
+    "global.sub": "한국 각 지역에서 활발히 진행 중인 프로젝트를 한눈에 확인하세요.",
+    "global.empty": "표시할 활성 프로젝트가 아직 없습니다.",
+    "global.viewMap": "맵으로 보기",
+    "global.modalTitle": "지역별 모집 현황",
     "filter.role.label": "역할", "filter.region.label": "지역", "filter.status.label": "모집 상태",
     "status.all": "전체", "status.open": "모집 중", "status.closed": "종료",
     "create.f.deadline": "모집 마감일",
@@ -269,6 +307,30 @@ const i18n = {
     "ws.status.active": "참여 중", "ws.open": "워크스페이스",
     "modal.login.title": "로그인", "modal.signup.title": "계정 만들기",
     "modal.email": "이메일", "modal.pass": "비밀번호", "modal.name": "표시 이름",
+    "taste.title": "영화 취향 등록",
+    "taste.step1.copy": "가입 완료 전에 영화 한 편을 선택해 주세요.",
+    "taste.step2.copy": "카테고리와 추천 이유를 입력해 주세요.",
+    "taste.search.ph": "영화 제목 검색",
+    "taste.search.btn": "검색",
+    "taste.search.empty": "검색 결과가 없습니다.",
+    "taste.search.needKey": "영화 검색 API가 설정되지 않았습니다.",
+    "taste.search.error": "영화 검색에 실패했습니다.",
+    "taste.next": "다음",
+    "taste.back": "이전",
+    "taste.submit": "가입 완료",
+    "taste.category.label": "카테고리",
+    "taste.category.ph": "카테고리 선택",
+    "taste.category.story": "스토리",
+    "taste.category.chat": "잡담",
+    "taste.category.homage": "오마주",
+    "taste.comment.label": "추천 이유",
+    "taste.comment.ph": "이 영화를 추천하는 이유를 작성해 주세요.",
+    "taste.selected": "선택한 영화",
+    "taste.validation.movie": "영화를 선택해 주세요.",
+    "taste.validation.category": "카테고리를 선택해 주세요.",
+    "taste.validation.content": "추천 이유를 입력해 주세요.",
+    "taste.partial": "회원가입은 완료됐지만 CineTMI 저장에 실패했습니다.",
+    "taste.saved": "영화 취향 정보가 저장되었습니다.",
     "modal.cancel": "취소", "modal.continue": "계속",
     "modal.toSignup": "계정이 없으신가요? 회원가입", "modal.toLogin": "이미 계정이 있으신가요? 로그인",
     "modal.no": "아니요", "modal.yes": "네, 계속하기",
@@ -322,6 +384,21 @@ const authCancel     = document.getElementById("authCancel");
 const signupNameWrap = document.getElementById("signupNameWrap");
 const authForm       = document.getElementById("authForm");
 const authMessage    = document.getElementById("authMessage");
+const authStepAccount = document.getElementById("authStepAccount");
+const authStepTaste   = document.getElementById("authStepTaste");
+const tasteStepMovie     = document.getElementById("tasteStepMovie");
+const tasteStepTmi       = document.getElementById("tasteStepTmi");
+const tasteMovieQuery    = document.getElementById("tasteMovieQuery");
+const tasteMovieSearchBtn = document.getElementById("tasteMovieSearchBtn");
+const tasteMovieResults  = document.getElementById("tasteMovieResults");
+const tasteMovieSelected = document.getElementById("tasteMovieSelected");
+const tasteStepNextBtn   = document.getElementById("tasteStepNextBtn");
+const tasteStepBackBtn   = document.getElementById("tasteStepBackBtn");
+const tasteCategory      = document.getElementById("tasteCategory");
+const tasteContent       = document.getElementById("tasteContent");
+const tasteSubmitBtn     = document.getElementById("tasteSubmitBtn");
+const tasteSignupCancel  = document.getElementById("tasteSignupCancel");
+const tasteSignupMessage = document.getElementById("tasteSignupMessage");
 const createForm     = document.getElementById("createForm");
 const createdList    = document.getElementById("createdList");
 const confirmDialog  = document.getElementById("confirmDialog");
@@ -330,7 +407,7 @@ const confirmBody    = document.getElementById("confirmBody");
 const confirmYes     = document.getElementById("confirmYes");
 const editProjectDialog  = document.getElementById("editProjectDialog");
 const editProjTitle      = document.getElementById("editProjTitle");
-const editProjDesc       = document.getElementById("editProjDesc");
+// editProjDesc is now a Quill editor — see quillEditDesc init below
 const editProjectSaveBtn = document.getElementById("editProjectSaveBtn");
 const editProjectCancelBtn = document.getElementById("editProjectCancelBtn");
 const preqDialog       = document.getElementById("preqDialog");
@@ -343,6 +420,7 @@ const chatInput      = document.getElementById("chatInput");
 const chatLog        = document.getElementById("chatLog");
 const roleFilter     = document.getElementById("roleFilter");
 const regionFilter   = document.getElementById("regionFilter");
+const globalMapSummary = document.getElementById("globalMapSummary");
 let   projects       = [];   // populated by loadDiscoverProjects()
 
 let authMode     = "login";
@@ -350,6 +428,30 @@ let confirmAction = null;
 let currentUser  = null;
 let chatChannel  = null;
 let currentPreq  = { text: "", required: "none" };
+let pendingSignupDraft = null;
+let selectedTasteMovie = null;
+let signupFlowState = "account";
+let selectedRegionCard = null;
+
+const REGION_CITY_LOOKUP = Object.freeze({
+  seoul:      { labels: { ko: "서울", en: "Seoul" } },
+  gyeonggi:   { labels: { ko: "경기", en: "Gyeonggi" } },
+  incheon:    { labels: { ko: "인천", en: "Incheon" } },
+  gangwon:    { labels: { ko: "강원", en: "Gangwon" } },
+  chungbuk:   { labels: { ko: "충북", en: "Chungbuk" } },
+  chungnam:   { labels: { ko: "충남", en: "Chungnam" } },
+  daejeon:    { labels: { ko: "대전", en: "Daejeon" } },
+  sejong:     { labels: { ko: "세종", en: "Sejong" } },
+  jeonbuk:    { labels: { ko: "전북", en: "Jeonbuk" } },
+  jeonnam:    { labels: { ko: "전남", en: "Jeonnam" } },
+  gwangju:    { labels: { ko: "광주", en: "Gwangju" } },
+  gyeongbuk:  { labels: { ko: "경북", en: "Gyeongbuk" } },
+  gyeongnam:  { labels: { ko: "경남", en: "Gyeongnam" } },
+  daegu:      { labels: { ko: "대구", en: "Daegu" } },
+  busan:      { labels: { ko: "부산", en: "Busan" } },
+  ulsan:      { labels: { ko: "울산", en: "Ulsan" } },
+  jeju:       { labels: { ko: "제주", en: "Jeju" } }
+});
 
 /* ── I18N APPLY ───────────────────────────────────────────── */
 function t(key) {
@@ -381,6 +483,7 @@ function applyLang(l) {
     if (sel) csel.querySelector(".csel-label").textContent = sel.textContent;
   });
   loadRoleStats();
+  loadDiscoverProjects();   // re-render cards with translated role/region labels
 }
 
 /* ── SCREEN NAV ───────────────────────────────────────────── */
@@ -522,48 +625,66 @@ async function loadMyPage() {
     : emptyJoined;
 }
 
+let statsIsLoading = false;
+
 async function showProjectStats() {
+  if (statsIsLoading) return;            // prevent double-tap / re-entrant calls
+  statsIsLoading = true;
+
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) {
+    statsIsLoading = false;
     authMode = "login"; updateAuthCopy(); authDialog.showModal();
     return;
   }
 
-  // Navigate to screen immediately and show loading state
+  // ── 1. Navigate immediately and enter loading state ──────────────
   const detailModal = document.getElementById("projectDetailModal");
   if (detailModal?.open) detailModal.close();
   document.getElementById("projectStatsPanel").classList.remove("hidden");
   document.getElementById("projectDetailPanel").classList.add("hidden");
   setScreen("project");
 
-  ["statProjects", "statParticipants", "statActive"].forEach(id => {
-    document.getElementById(id).textContent = "…";
-  });
+  const kpiIds = ["statProjects", "statParticipants", "statActive"];
+  kpiIds.forEach(id => { document.getElementById(id).textContent = "…"; });
   document.getElementById("roleStatBars").innerHTML =
     `<p class="card-empty">${lang === "ko" ? "불러오는 중…" : "Loading…"}</p>`;
 
-  // Fetch all projects owned by the current user
+  // ── 2. Fetch all projects owned by current user ───────────────────
+  console.log("[stats] session.user.id:", session.user.id);
   const { data: owned, error: ownedErr } = await sbClient
     .from("projects")
     .select("id, title")
     .eq("creator_id", session.user.id)
     .order("created_at", { ascending: false });
 
-  console.log("User projects:", owned);
-  if (ownedErr) console.error("[stats] ownership fetch error:", ownedErr.message);
+  console.log("Fetched Projects:", owned);
+  if (ownedErr) console.error("[stats] fetch error (check RLS SELECT policy on 'projects'):", ownedErr);
 
-  if (!owned?.length) {
-    showToast(lang === "ko"
-      ? "프로젝트를 먼저 생성해야 이 화면에 접근할 수 있습니다."
-      : "Create a project first to access this area.");
-    ["statProjects", "statParticipants", "statActive"].forEach(id => {
-      document.getElementById(id).textContent = "–";
-    });
-    document.getElementById("roleStatBars").innerHTML = "";
+  // ── 3a. Query error — show diagnostic message, NOT "create project" ─
+  if (ownedErr) {
+    kpiIds.forEach(id => { document.getElementById(id).textContent = "!"; });
+    document.getElementById("roleStatBars").innerHTML =
+      `<p class="card-empty" style="color:var(--cta)">
+         ${lang === "ko" ? "데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요." : "Failed to load data. Please try again."}
+         <br><small style="opacity:.5">${ownedErr.message}</small>
+       </p>`;
+    statsIsLoading = false;
     return;
   }
 
-  // Multi-project picker: only shown when user owns more than one project
+  // ── 3b. Genuine empty — user really has no projects yet ───────────
+  if (!owned.length) {
+    showToast(lang === "ko"
+      ? "프로젝트를 먼저 생성해야 이 화면에 접근할 수 있습니다."
+      : "Create a project first to access this area.");
+    kpiIds.forEach(id => { document.getElementById(id).textContent = "–"; });
+    document.getElementById("roleStatBars").innerHTML = "";
+    statsIsLoading = false;
+    return;
+  }
+
+  // ── 4. Success — populate project picker if needed ────────────────
   const selectorWrap = document.getElementById("projectSelectorWrap");
   const selector     = document.getElementById("projectSelector");
   if (owned.length > 1) {
@@ -579,12 +700,23 @@ async function showProjectStats() {
     selectorWrap.classList.add("hidden");
   }
 
-  // Load stats for the first (or only) project
+  statsIsLoading = false;
   const firstId = owned[0].id;
   loadProjectStats(firstId);
   loadRoleStats(firstId);
 }
 
+
+function getRoleColorClass(roleName) {
+  const n = (roleName || "").toLowerCase();
+  if (["maleactor","femaleactor","actor","leadactor"].includes(n))  return "rc--actor";
+  if (["director","assdirector"].includes(n))                       return "rc--director";
+  if (["screenwriter","script"].includes(n))                        return "rc--script";
+  if (["cinematographer","filming"].includes(n))                    return "rc--camera";
+  if (["editor","editing"].includes(n))                             return "rc--edit";
+  if (["composer","music"].includes(n))                             return "rc--music";
+  return "rc--default";
+}
 
 async function loadProjectDetail(projectId) {
   console.log("[join] Step 1: loadProjectDetail called — projectId:", projectId);
@@ -601,47 +733,72 @@ async function loadProjectDetail(projectId) {
     }
     console.log("[join] Step 2: Project fetched →", proj.title);
 
-    document.getElementById("modalDetailTitle").textContent = proj.title || "";
-    const descEl = document.getElementById("modalDetailDesc");
-    if (descEl) descEl.textContent = proj.description || "";
-
+    // ── Topbar: status (genre stays empty — no genre field in DB yet) ────
     const statusEl = document.getElementById("modalDetailStatus");
     if (statusEl) statusEl.innerHTML = statusBadgeHtml(proj.closing_date);
 
-    const regionText = (proj.regions || [])
+    // ── Title ─────────────────────────────────────────────────────────────
+    document.getElementById("modalDetailTitle").textContent = proj.title || "";
+
+    // ── Meta pills: region + role summary ─────────────────────────────────
+    const regionNames = (proj.regions || [])
       .map(r => t("region." + r) || r)
       .join(" · ") || (lang === "ko" ? "전국" : "Nationwide");
+    const roles = proj.recruitment_details || [];
+    const rolePills = roles.slice(0, 4).map(r => {
+      const roleName = t("role." + r.role_name) || r.role_name;
+      const agePart  = (r.min_age && r.max_age)
+        ? ` ${r.min_age}–${r.max_age}${lang === "ko" ? "세" : ""}`
+        : "";
+      return `<span class="pdm-meta-pill">${escapeHtml(roleName)}${agePart} ×${r.headcount}</span>`;
+    }).join("");
     const regionEl = document.getElementById("modalDetailRegion");
     if (regionEl) {
-      regionEl.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(regionText)}`;
+      regionEl.innerHTML =
+        `<span class="pdm-meta-pill"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(regionNames)}</span>${rolePills}`;
     }
 
-    const slotsEl = document.getElementById("modalDetailSlots");
-    if (slotsEl) {
-      const roles = proj.recruitment_details || [];
-      const slotsLabel = lang === "ko" ? "모집 분야" : "Open positions";
+    // ── Content: description + role cards ─────────────────────────────────
+    let contentHtml = "";
 
-      const { data: { session: ownSess } } = await sbClient.auth.getSession();
-      const isOwner = ownSess?.user?.id === proj.creator_id;
-      const manageBtnHtml = isOwner
-        ? `<button class="manage-project-btn" onclick="showProjectStats()">${lang === "ko" ? "프로젝트 관리 →" : "Manage project →"}</button>`
-        : "";
-
-      const slotsHtml = roles.length
-        ? roles.map(r => {
-            const roleName  = t("role." + r.role_name) || r.role_name;
-            const agePart   = (r.min_age && r.max_age)
-              ? ` · ${r.min_age}–${r.max_age}${lang === "ko" ? "세" : "y.o."}`
-              : "";
-            const countPart = lang === "ko" ? `×${r.headcount}명 모집` : `×${r.headcount} wanted`;
-            return `<button class="slot-row role-join" data-role="${escapeHtml(r.role_name)}" data-project-id="${escapeHtml(proj.id)}">
-              <span>${escapeHtml(roleName)}${agePart}</span>
-              <span class="slot-count">${countPart}</span>
-            </button>`;
-          }).join("")
-        : `<p class="card-empty">${lang === "ko" ? "모집 분야 없음" : "No open positions"}</p>`;
-      slotsEl.innerHTML = `<p class="slots-label">${slotsLabel}</p>${slotsHtml}${manageBtnHtml}`;
+    // description section
+    if (proj.description) {
+      const descLabel = lang === "ko" ? "작품 소개" : "About";
+      contentHtml += `<div class="pdm-section">
+        <p class="pdm-section-label">${descLabel}</p>
+        <div class="pdm-desc">${DOMPurify.sanitize(proj.description)}</div>
+      </div>`;
     }
+
+    // recruitment section with colour-coded role cards
+    const rolesLabel = lang === "ko" ? "모집 부문" : "Open Positions";
+    const roleCardsHtml = roles.length
+      ? roles.map(r => {
+          const roleName   = t("role." + r.role_name) || r.role_name;
+          const colorClass = getRoleColorClass(r.role_name);
+          const ageMeta    = (r.min_age && r.max_age)
+            ? `${r.min_age}–${r.max_age}${lang === "ko" ? "세" : " y.o."}`
+            : "";
+          const countText  = lang === "ko" ? `×${r.headcount}명 모집` : `×${r.headcount} wanted`;
+          const metaStr    = [ageMeta, countText].filter(Boolean).join("  ·  ");
+          return `<div class="role-card ${colorClass}">
+            <div class="rc-info">
+              <span class="rc-name">${escapeHtml(roleName)}</span>
+              <span class="rc-detail">${escapeHtml(metaStr)}</span>
+            </div>
+            <button class="rc-join role-join" data-role="${escapeHtml(r.role_name)}" data-project-id="${escapeHtml(proj.id)}">
+              ${lang === "ko" ? "참여" : "Join"}
+            </button>
+          </div>`;
+        }).join("")
+      : `<p class="card-empty">${lang === "ko" ? "모집 분야 없음" : "No open positions"}</p>`;
+
+    contentHtml += `<div class="pdm-section">
+      <p class="pdm-section-label">${rolesLabel}</p>
+      <div class="role-cards">${roleCardsHtml}</div>
+    </div>`;
+
+    document.getElementById("modalDetailSlots").innerHTML = contentHtml;
 
     console.log("[join] Step 3: Modal populated — opening dialog");
     document.getElementById("projectDetailModal").showModal();
@@ -703,9 +860,131 @@ function updateAuthCopy() {
   signupNameWrap.classList.toggle("hidden", !isSignup);
 }
 
+function setTasteStep(stepName) {
+  const showMovie = stepName === "movie";
+  tasteStepMovie?.classList.toggle("hidden", !showMovie);
+  tasteStepTmi?.classList.toggle("hidden", showMovie);
+}
+
+function setSignupFlowState(nextState) {
+  signupFlowState = nextState;
+  const legacyTasteDialog = document.getElementById("tasteSignupDialog");
+
+  if (signupFlowState === "account") {
+    authStepAccount?.classList.remove("hidden");
+    authStepTaste?.classList.add("hidden");
+    authSwitch?.classList.remove("hidden");
+    if (legacyTasteDialog?.open) legacyTasteDialog.close();
+    if (authMode === "signup") updateAuthCopy();
+    return;
+  }
+
+  if (signupFlowState === "taste") {
+    // Fallback for stale/cached HTML that does not include authStepTaste yet.
+    if (!authStepTaste || !authStepAccount) {
+      console.warn("[signup] Missing single-dialog step DOM. Opening legacy taste dialog fallback.");
+      if (authDialog?.open) authDialog.close();
+      if (legacyTasteDialog?.showModal) legacyTasteDialog.showModal();
+      return;
+    }
+
+    authTitle.textContent = t("taste.title");
+    authStepAccount?.classList.add("hidden");
+    authStepTaste?.classList.remove("hidden");
+    authSwitch?.classList.add("hidden");
+    setTasteStep("movie");
+    if (!authDialog?.open) authDialog?.showModal();
+  }
+}
+
+function resetTasteSignupFlow() {
+  selectedTasteMovie = null;
+  if (tasteMovieQuery) tasteMovieQuery.value = "";
+  if (tasteMovieResults) tasteMovieResults.innerHTML = "";
+  if (tasteCategory) tasteCategory.value = "";
+  if (tasteContent) tasteContent.value = "";
+  if (tasteMovieSelected) {
+    tasteMovieSelected.classList.add("hidden");
+    tasteMovieSelected.textContent = "";
+  }
+  if (tasteSignupMessage) {
+    tasteSignupMessage.textContent = "";
+    tasteSignupMessage.className = "auth-message";
+  }
+  setTasteStep("movie");
+}
+
+function renderTasteSearchResults(movies) {
+  if (!tasteMovieResults) return;
+  if (!movies.length) {
+    tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${escapeHtml(t("taste.search.empty"))}</div>`;
+    return;
+  }
+
+  tasteMovieResults.innerHTML = movies.slice(0, 10).map(movie => {
+    const year = (movie.release_date || "").slice(0, 4) || "-";
+    return `<button type="button" class="taste-movie-item" data-id="${movie.id}" data-title="${escapeHtml(movie.title || "")}">
+      <span class="taste-movie-title">${escapeHtml(movie.title || "Untitled")}</span>
+      <span class="taste-movie-meta">${escapeHtml(year)} · TMDB ID ${movie.id}</span>
+    </button>`;
+  }).join("");
+}
+
+async function searchTmdbMovies(query) {
+  if (!query || query.length < 2 || query.length > 80) throw new Error("INVALID_QUERY");
+  const language = lang === "ko" ? "ko-KR" : "en-US";
+  const url = `${INTERNAL_API_BASE}/api/tmdb/search?query=${encodeURIComponent(query)}&lang=${encodeURIComponent(language)}`;
+  const response = await fetch(url);
+  if (response.status === 404) throw new Error("SEARCH_API_MISSING");
+  if (!response.ok) throw new Error("TMDB_SEARCH_FAILED");
+  const payload = await response.json();
+  return payload?.results || payload?.data || [];
+}
+
+async function saveTasteToCineTmi({ nickname, password, category, content, movieId }) {
+  const response = await fetch(`${INTERNAL_API_BASE}/api/cinetmi/tmi-posts`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nickname,
+      password,
+      category,
+      content,
+      content_id: Number(movieId)
+    })
+  });
+
+  if (response.status === 404) throw new Error("CINETMI_API_MISSING");
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload?.message || "CINETMI_SAVE_FAILED");
+  }
+}
+
+async function performIntegratedSignup({ email, password, nickname, category, content, movieId }) {
+  let signupResult;
+  try {
+    signupResult = await signUpUser(email, password, nickname);
+    if (signupResult.error) throw signupResult.error;
+  } catch (error) {
+    return { error, signupResult: null, cineError: null };
+  }
+
+  try {
+    await saveTasteToCineTmi({ nickname, password, category, content, movieId });
+    return { error: null, signupResult, cineError: null };
+  } catch (cineError) {
+    console.error("[cinetmi] tmi_posts insert failed:", cineError.message || cineError);
+    return { error: null, signupResult, cineError };
+  }
+}
+
+async function handleSignup(payload) {
+  return performIntegratedSignup(payload);
+}
+
 /* ── EVENT LISTENERS ──────────────────────────────────────── */
 navItems.forEach(item => item.addEventListener("click", () => {
-  if (item.dataset.screen === "project") { showProjectStats(); return; }
   if (item.dataset.screen === "mypage")  { loadMyPage(); }
   setScreen(item.dataset.screen);
 }));
@@ -739,14 +1018,19 @@ authBtn.addEventListener("click", async () => {
     setScreen("discover");
     return;
   }
+  setSignupFlowState("account");
   authMode = "login";
   updateAuthCopy();
   authDialog.showModal();
 });
 
-authCancel.addEventListener("click", () => authDialog.close());
+authCancel.addEventListener("click", () => {
+  setSignupFlowState("account");
+  authDialog.close();
+});
 
 authSwitch.addEventListener("click", () => {
+  setSignupFlowState("account");
   authMode = authMode === "login" ? "signup" : "login";
   updateAuthCopy();
 });
@@ -760,9 +1044,20 @@ authForm.addEventListener("submit", async event => {
   authMessage.textContent = "";
   authMessage.className   = "auth-message";
 
-  const result = authMode === "signup"
-    ? await signUpUser(email, password, name)
-    : await signInUser(email, password);
+  if (authMode === "signup") {
+    if (!name) {
+      authMessage.textContent = lang === "ko" ? "표시 이름을 입력해 주세요." : "Please enter display name.";
+      authMessage.classList.add("auth-message--error");
+      return;
+    }
+
+    pendingSignupDraft = { email, password, nickname: name };
+    resetTasteSignupFlow();
+    setSignupFlowState("taste");
+    return;
+  }
+
+  const result = await signInUser(email, password);
 
   if (result.error) {
     authMessage.textContent = result.error.message;
@@ -787,6 +1082,125 @@ authForm.addEventListener("submit", async event => {
     authMessage.className   = "auth-message";
     authForm.reset();
   }, 1400);
+});
+
+tasteSignupCancel?.addEventListener("click", () => {
+  setSignupFlowState("account");
+  resetTasteSignupFlow();
+  pendingSignupDraft = null;
+  authMode = "signup";
+  updateAuthCopy();
+});
+
+tasteMovieSearchBtn?.addEventListener("click", async () => {
+  const query = tasteMovieQuery?.value.trim() || "";
+  if (!query) return;
+  if (!tasteMovieResults) return;
+
+  tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${lang === "ko" ? "검색 중…" : "Searching…"}</div>`;
+  try {
+    const movies = await searchTmdbMovies(query);
+    renderTasteSearchResults(movies);
+  } catch (error) {
+    const key = error.message === "SEARCH_API_MISSING" ? "taste.search.needKey" : "taste.search.error";
+    tasteMovieResults.innerHTML = `<div class="taste-movie-empty">${escapeHtml(t(key))}</div>`;
+  }
+});
+
+tasteMovieQuery?.addEventListener("keydown", event => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  tasteMovieSearchBtn?.click();
+});
+
+tasteMovieResults?.addEventListener("click", event => {
+  const btn = event.target.closest(".taste-movie-item");
+  if (!btn) return;
+  selectedTasteMovie = {
+    id: Number(btn.dataset.id),
+    title: btn.dataset.title || ""
+  };
+  tasteMovieSelected?.classList.remove("hidden");
+  tasteMovieSelected.textContent = `${t("taste.selected")}: ${selectedTasteMovie.title} (ID ${selectedTasteMovie.id})`;
+});
+
+tasteStepNextBtn?.addEventListener("click", () => {
+  if (!selectedTasteMovie) {
+    showToast(t("taste.validation.movie"));
+    return;
+  }
+  setTasteStep("tmi");
+});
+
+tasteStepBackBtn?.addEventListener("click", () => {
+  setTasteStep("movie");
+});
+
+tasteSubmitBtn?.addEventListener("click", async () => {
+  if (!pendingSignupDraft) return;
+  const ALLOWED_TASTE_CATEGORIES = new Set(["story", "chat", "homage"]);
+  const category = tasteCategory?.value || "";
+  const content = tasteContent?.value.trim() || "";
+  const normalizedContent = content.replace(/\s+/g, " ").trim();
+
+  if (!selectedTasteMovie) {
+    tasteSignupMessage.textContent = t("taste.validation.movie");
+    tasteSignupMessage.className = "auth-message auth-message--error";
+    setTasteStep("movie");
+    return;
+  }
+  if (!category || !ALLOWED_TASTE_CATEGORIES.has(category)) {
+    tasteSignupMessage.textContent = t("taste.validation.category");
+    tasteSignupMessage.className = "auth-message auth-message--error";
+    return;
+  }
+  if (!normalizedContent || normalizedContent.length < 4 || normalizedContent.length > 500) {
+    tasteSignupMessage.textContent = t("taste.validation.content");
+    tasteSignupMessage.className = "auth-message auth-message--error";
+    return;
+  }
+
+  tasteSignupMessage.textContent = lang === "ko" ? "가입 처리 중…" : "Creating account…";
+  tasteSignupMessage.className = "auth-message";
+
+  const { error, signupResult, cineError } = await handleSignup({
+    email: pendingSignupDraft.email,
+    password: pendingSignupDraft.password,
+    nickname: pendingSignupDraft.nickname,
+    category,
+    content: normalizedContent,
+    movieId: selectedTasteMovie.id
+  });
+
+  if (error) {
+    tasteSignupMessage.textContent = error.message || (lang === "ko" ? "가입에 실패했습니다." : "Sign-up failed.");
+    tasteSignupMessage.className = "auth-message auth-message--error";
+    return;
+  }
+
+  state.authed = true;
+  currentUser = signupResult?.user || null;
+  renderIdentity();
+  pushNotification(t("notif.signup"));
+  if (cineError) {
+    showToast(t("taste.partial"));
+  } else {
+    showToast(t("taste.saved"));
+  }
+
+  setSignupFlowState("account");
+  pendingSignupDraft = null;
+  resetTasteSignupFlow();
+  authForm.reset();
+  authDialog.close();
+});
+
+authDialog?.addEventListener("close", () => {
+  setSignupFlowState("account");
+  pendingSignupDraft = null;
+  resetTasteSignupFlow();
+  const authPassEl = document.getElementById("authPass");
+  if (authPassEl) authPassEl.value = "";
 });
 
 projectList.addEventListener("click", event => {
@@ -842,7 +1256,7 @@ createdList.addEventListener("click", async event => {
       .select("title, description, regions, closing_date").eq("id", _editingProjectId).maybeSingle();
     if (error) { console.error("[edit-project]", error.message); return; }
     editProjTitle.value = data?.title || "";
-    editProjDesc.value  = data?.description || "";
+    quillEditDesc.root.innerHTML = DOMPurify.sanitize(data?.description || "");
     // Pre-check region checkboxes
     const savedRegions = (data?.regions || []).map(r => r.toLowerCase());
     document.querySelectorAll('[name="edit-proj-region"]').forEach(cb => {
@@ -877,8 +1291,9 @@ createdList.addEventListener("click", async event => {
 
 editProjectSaveBtn.addEventListener("click", async () => {
   if (!_editingProjectId) return;
-  const newTitle = editProjTitle.value.trim();
-  const newDesc  = editProjDesc.value.trim();
+  const newTitle   = editProjTitle.value.trim();
+  const rawEditDesc = quillEditDesc.root.innerHTML;
+  const newDesc     = (rawEditDesc === "<p><br></p>" || rawEditDesc === "<p></p>") ? "" : rawEditDesc;
   if (!newTitle) return;
   const regionCbs   = [...document.querySelectorAll('[name="edit-proj-region"]:checked')];
   const newRegions   = regionCbs.length ? regionCbs.map(cb => cb.value) : ["nationwide"];
@@ -905,7 +1320,8 @@ editProjectCancelBtn.addEventListener("click", () => {
 /** Reads the create-form DOM and returns a plain data object. */
 function collectFormData() {
   const title     = document.getElementById("projectTitle").value.trim() || "Untitled";
-  const desc      = document.getElementById("projectDesc").value.trim();
+  const rawDesc   = quillDesc.root.innerHTML;
+  const desc      = (rawDesc === "<p><br></p>" || rawDesc === "<p></p>") ? "" : rawDesc;
   const regionCbs = [...document.querySelectorAll('[name="proj-region"]:checked')];
   const regions   = regionCbs.length ? regionCbs.map(cb => cb.value) : ["nationwide"];
 
@@ -995,6 +1411,7 @@ function resetCreateForm() {
   createForm.reset();
   document.getElementById("roleDetails").innerHTML = "";
   document.getElementById("descCount").textContent = "(0/1000)";
+  quillDesc.setContents([]);
   currentPreq = { text: "", required: "none" };
   document.getElementById("preqSetupRow").classList.remove("hidden");
   document.getElementById("preqPreview").classList.add("hidden");
@@ -1040,10 +1457,7 @@ createForm.addEventListener("submit", async event => {
 });
 
 /* ── CREATE FORM INTERACTIONS ─────────────────────────────── */
-// textarea char counter
-document.getElementById("projectDesc").addEventListener("input", function () {
-  document.getElementById("descCount").textContent = `(${this.value.length}/1000)`;
-});
+// char counter is now handled by quillDesc text-change event above
 
 // region checkboxes: max 5, 전국 exclusive
 document.querySelectorAll('[name="proj-region"]').forEach(cb => {
@@ -1215,9 +1629,87 @@ function applyFilters() {
     p.style.display = rm && rg && st ? "flex" : "none";
   });
 }
+
+function calcBubbleRadius(count, minCount, maxCount) {
+  const minR = 14;
+  const maxR = 40;
+  if (minCount === maxCount) return 26;
+  return minR + ((count - minCount) / (maxCount - minCount)) * (maxR - minR);
+}
+
+function getRegionBubbleData(projectRows) {
+  const counts = new Map();
+  (projectRows || [])
+    .filter(project => getProjectStatus(project.closing_date) === "open")
+    .forEach(project => {
+      const regionKeys = Array.isArray(project.regions) && project.regions.length
+        ? project.regions
+        : ["nationwide"];
+
+      regionKeys.forEach(regionKey => {
+        const key = String(regionKey || "nationwide").toLowerCase();
+        if (key === "nationwide" || !REGION_CITY_LOOKUP[key]) return;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      });
+    });
+
+  return [...counts.entries()]
+    .map(([key, count]) => ({
+      key,
+      count,
+      city: REGION_CITY_LOOKUP[key].labels[lang] || REGION_CITY_LOOKUP[key].labels.en
+    }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function applyWorldRegionFilter(regionKey) {
+  if (!regionFilter) return;
+  const normalized = regionKey || "nationwide";
+  regionFilter.value = normalized;
+  selectedRegionCard = normalized === "nationwide" ? null : normalized;
+  applyFilters();
+  globalMapSummary?.querySelectorAll(".global-summary-card").forEach(card => {
+    card.classList.toggle("is-selected", card.dataset.region === selectedRegionCard);
+  });
+  projectList?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function renderWorldMapSection(projectRows) {
+  if (!globalMapSummary) return;
+
+  const regions = getRegionBubbleData(projectRows);
+  if (!regions.length) {
+    const emptyHtml = `<div class="global-summary-empty">${escapeHtml(t("global.empty"))}</div>`;
+    globalMapSummary.innerHTML = emptyHtml;
+    selectedRegionCard = null;
+    return;
+  }
+
+  globalMapSummary.innerHTML = regions.map(region => {
+    const countLabel = lang === "ko" ? `프로젝트 ${region.count}개` : `${region.count} projects`;
+    const selectedClass = selectedRegionCard === region.key ? " is-selected" : "";
+    return `<button class="global-summary-card${selectedClass}" type="button" data-region="${escapeHtml(region.key)}">
+      <strong>${escapeHtml(region.city)}</strong>
+      <span>${escapeHtml(countLabel)}</span>
+    </button>`;
+  }).join("");
+}
+
 roleFilter.addEventListener("change", applyFilters);
-regionFilter.addEventListener("change", applyFilters);
+regionFilter.addEventListener("change", event => {
+  applyWorldRegionFilter(event.target.value || "nationwide");
+});
 document.getElementById("statusFilter")?.addEventListener("change", applyFilters);
+globalMapSummary?.addEventListener("click", event => {
+  const card = event.target.closest(".global-summary-card");
+  if (!card) return;
+  const key = card.dataset.region;
+  if (selectedRegionCard === key) {
+    applyWorldRegionFilter("nationwide");
+    return;
+  }
+  applyWorldRegionFilter(key);
+});
 
 /* ── DISCOVER: load projects from Supabase ───────────────── */
 async function loadDiscoverProjects() {
@@ -1234,6 +1726,7 @@ async function loadDiscoverProjects() {
   if (error || !data || data.length === 0) {
     projectList.innerHTML = `<p class="card-empty">${lang === "ko" ? "등록된 프로젝트가 없습니다." : "No projects yet."}</p>`;
     document.getElementById("openCount").textContent = lang === "ko" ? "0개 모집 중" : "0 open";
+    await renderWorldMapSection([]);
     applyFilters();
     return;
   }
@@ -1241,6 +1734,8 @@ async function loadDiscoverProjects() {
   const openCount = data.filter(p => getProjectStatus(p.closing_date) === "open").length;
   document.getElementById("openCount").textContent =
     lang === "ko" ? `${openCount}개 모집 중` : `${openCount} open`;
+
+  await renderWorldMapSection(data);
 
   data.forEach((proj, idx) => {
     const roles         = proj.recruitment_details || [];
@@ -1283,8 +1778,7 @@ async function loadDiscoverProjects() {
 }
 
 /* ── INIT ─────────────────────────────────────────────────── */
-applyLang("ko");
-loadDiscoverProjects();
+applyLang("ko");  // also calls loadDiscoverProjects()
 
 // Restore session on page load and keep state in sync on every auth event
 sbClient.auth.onAuthStateChange((event, session) => {
@@ -1591,9 +2085,10 @@ async function initiateJoin(projId, onApproved, onWaiting) {
 function openPreqDialog() {
   console.log("[preq] openPreqDialog called");
   try {
-    document.getElementById("preqText").value = currentPreq.text;
+    document.getElementById("preqText") && (document.getElementById("preqText").value = currentPreq.text);
+    quillPreq.root.innerHTML = DOMPurify.sanitize(currentPreq.text || "");
     setCselValue("preqRequired", currentPreq.required);
-    document.getElementById("preqCount").textContent = currentPreq.text.length;
+    document.getElementById("preqCount").textContent = quillPreq.getText().trim().length;
     preqDialog.showModal();
     console.log("[preq] dialog opened");
   } catch (err) {
@@ -1602,7 +2097,7 @@ function openPreqDialog() {
 }
 
 function savePreq() {
-  const q = document.getElementById("preqText").value.trim();
+  const q = quillPreq.getText().trim();
   const r = document.getElementById("preqRequired").dataset.value || "none";
   currentPreq = { text: q, required: r };
   preqDialog.close();
@@ -1626,8 +2121,53 @@ document.getElementById("preqSetBtn").addEventListener("click",  openPreqDialog)
 document.getElementById("preqEditBtn").addEventListener("click", openPreqDialog);
 document.getElementById("preqOk").addEventListener("click",       savePreq);
 document.getElementById("preqClose").addEventListener("click",    () => preqDialog.close());
-document.getElementById("preqText").addEventListener("input", function () {
-  document.getElementById("preqCount").textContent = this.value.length;
+
+/* ── QUILL EDITOR INIT ───────────────────────────────────── */
+const QUILL_TOOLBAR = [
+  ["bold", "italic", "underline"],
+  [{ color: [] }],
+  [{ list: "ordered" }, { list: "bullet" }],
+  ["clean"]
+];
+
+// Create project description editor
+const quillDesc = new Quill("#projectDescEditor", {
+  theme: "snow",
+  placeholder: "Brief, tone, objectives, and collaboration expectations.",
+  modules: { toolbar: QUILL_TOOLBAR }
+});
+quillDesc.on("text-change", () => {
+  const len = quillDesc.getText().length - 1; // Quill always has a trailing \n
+  document.getElementById("descCount").textContent = `(${Math.min(len, 1000)}/1000)`;
+});
+
+// Edit project description editor
+const quillEditDesc = new Quill("#editProjDescEditor", {
+  theme: "snow",
+  placeholder: "Brief, tone, objectives, and collaboration expectations.",
+  modules: { toolbar: QUILL_TOOLBAR }
+});
+
+// Pre-screening question editor
+const quillPreq = new Quill("#preqTextEditor", {
+  theme: "snow",
+  placeholder: "Enter a Yes/No question...",
+  modules: {
+    toolbar: [
+      ["bold", "italic", "underline"],
+      [{ color: [] }],
+      ["clean"]
+    ]
+  },
+  formats: ["bold", "italic", "underline", "color"]
+});
+quillPreq.on("text-change", () => {
+  const len = Math.min(quillPreq.getText().length - 1, 100);
+  document.getElementById("preqCount").textContent = len;
+  // enforce 100-char limit
+  if (quillPreq.getText().length - 1 > 100) {
+    quillPreq.deleteText(100, quillPreq.getText().length);
+  }
 });
 
 /* ── DATE PICKER — click anywhere opens native picker ───────── */

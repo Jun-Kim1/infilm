@@ -8,6 +8,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <!-- Quill rich-text editor -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
+  <!-- DOMPurify (sanitize HTML before rendering) -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 </head>
 <body>
 
@@ -18,7 +23,6 @@
     <nav class="top-nav" aria-label="Main navigation">
       <button class="nav-item active" data-screen="discover" data-i18n="nav.discover">Discover</button>
       <button class="nav-item" data-screen="create" data-i18n="nav.create">Create</button>
-      <button class="nav-item" data-screen="project" data-i18n="nav.project">Project</button>
       <button class="nav-item" data-screen="mypage" data-i18n="nav.mypage">My Page</button>
     </nav>
 
@@ -47,7 +51,6 @@
         <span class="open-count" id="openCount" data-i18n="discover.open">3 open</span>
       </div>
 
-      <h2 class="display-title"><span data-i18n="discover.title1">Find the right crew</span><br><span data-i18n="discover.title2">without friction</span></h2>
       <p class="display-sub" data-i18n="discover.sub">Filter by role, region, and production window. Joining requires authentication and clearly communicates policy.</p>
 
       <div class="filter-row">
@@ -97,6 +100,12 @@
           </select>
         </label>
       </div>
+
+      <section class="global-map-section" aria-labelledby="globalMapTitle">
+        <div class="global-map-shell">
+          <div class="global-map-summary" id="globalMapSummary"></div>
+        </div>
+      </section>
 
       <div class="project-grid" id="projectList">
         <!-- Cards loaded dynamically from Supabase -->
@@ -150,7 +159,7 @@
             <span class="cf-char" id="descCount">(0/1000)</span>
           </div>
           <div class="cf-control">
-            <textarea id="projectDesc" maxlength="1000" placeholder="Brief, tone, objectives, and collaboration expectations." data-i18n-ph="create.f.desc.ph"></textarea>
+            <div id="projectDescEditor" class="quill-editor"></div>
           </div>
         </div>
         <!-- 지역 -->
@@ -228,78 +237,6 @@
       </form>
     </section>
 
-    <!-- 04 PROJECT ───────────────────────────────────────────── -->
-    <section class="screen" id="project">
-      <div class="screen-header">
-        <div class="screen-meta">
-          <span class="screen-label" data-i18n="project.label">PROJECTS</span>
-        </div>
-      </div>
-
-      <!-- ── Stats panel (default when nav is clicked) ────────── -->
-      <div id="projectStatsPanel">
-        <h2 class="display-title">
-          <span data-i18n="project.stats.title1">Project</span><br>
-          <span data-i18n="project.stats.title2">Statistics</span>
-        </h2>
-        <p class="display-sub" data-i18n="project.stats.sub">Recruitment activity for your project.</p>
-
-        <!-- shown only when user owns >1 project -->
-        <div id="projectSelectorWrap" class="project-selector-wrap hidden">
-          <label class="stats-breakdown-label" for="projectSelector" data-i18n="stat.select.project">프로젝트 선택</label>
-          <select id="projectSelector" class="project-selector-select"></select>
-        </div>
-
-        <div class="stats-kpi-row">
-          <div class="kpi-card">
-            <span class="kpi-value" id="statProjects">–</span>
-            <span class="kpi-label" id="kpiLabelSlots" data-i18n="stat.slots">모집 인원</span>
-          </div>
-          <div class="kpi-card">
-            <span class="kpi-value" id="statParticipants">–</span>
-            <span class="kpi-label" data-i18n="stat.participants">Participants</span>
-          </div>
-          <div class="kpi-card">
-            <span class="kpi-value" id="statActive">–</span>
-            <span class="kpi-label" id="kpiLabelStatus" data-i18n="stat.status">모집 상태</span>
-          </div>
-        </div>
-
-        <div class="stats-breakdown">
-          <p class="stats-breakdown-label" data-i18n="stat.by.role">By recruitment field</p>
-          <div class="stat-bars" id="roleStatBars"></div>
-        </div>
-      </div>
-
-      <!-- ── Detail panel (shown when viewing a specific project) ─ -->
-      <div id="projectDetailPanel" class="hidden">
-        <div class="project-detail">
-          <div class="detail-main">
-            <span class="genre-tag thriller" id="detailGenre">Thriller Short</span>
-            <h2 class="display-title" id="detailTitle">Glass Corridor</h2>
-            <div id="detailStatus"></div>
-            <p class="display-sub" id="detailDesc">A suspense short film with urban interiors, practical effects, and low-light choreography.</p>
-            <p class="detail-meta" id="detailRegion">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              Seoul · Recruiting until Sep 12
-            </p>
-          </div>
-          <div class="detail-slots">
-            <p class="slots-label" data-i18n="project.slots.label">Open positions</p>
-            <button class="slot-row role-join" data-role="Editor">
-              <span>Editor</span><span class="slot-count">1 / 2 filled</span>
-            </button>
-            <button class="slot-row role-join" data-role="Lead Actor">
-              <span>Lead Actor</span><span class="slot-count">0 / 1 filled</span>
-            </button>
-            <button class="slot-row role-join" data-role="Composer">
-              <span>Composer</span><span class="slot-count">0 / 1 filled</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- 05 MY PAGE ───────────────────────────────────────────── -->
     <section class="screen" id="mypage">
       <div class="screen-header">
@@ -368,7 +305,6 @@
   <nav class="mobile-nav" aria-label="Navigation">
     <button class="nav-item mobile-nav-item active" data-screen="discover" data-i18n="nav.discover">Discover</button>
     <button class="nav-item mobile-nav-item" data-screen="create"   data-i18n="nav.create">Create</button>
-    <button class="nav-item mobile-nav-item" data-screen="project"  data-i18n="nav.project">Project</button>
     <button class="nav-item mobile-nav-item" data-screen="mypage"   data-i18n="nav.mypage">My Page</button>
   </nav>
 
@@ -389,15 +325,55 @@
   <dialog id="authDialog" class="modal">
     <form id="authForm">
       <h3 id="authTitle">Log in</h3>
-      <label class="form-field"><span data-i18n="modal.email">Email</span><input type="email" id="authEmail" required /></label>
-      <label class="form-field"><span data-i18n="modal.pass">Password</span><input type="password" id="authPass" required /></label>
-      <label class="form-field hidden" id="signupNameWrap"><span data-i18n="modal.name">Display name</span><input id="authName" /></label>
-      <p id="authMessage" class="auth-message"></p>
-      <div class="modal-actions">
-        <button type="button" class="ghost-btn" id="authCancel" data-i18n="modal.cancel">Cancel</button>
-        <button type="submit" class="cta-btn" data-i18n="modal.continue">Continue</button>
-      </div>
-      <button type="button" class="switch-link" id="authSwitch">Need an account? Sign up</button>
+      <section id="authStepAccount">
+        <label class="form-field"><span data-i18n="modal.email">Email</span><input type="email" id="authEmail" required /></label>
+        <label class="form-field"><span data-i18n="modal.pass">Password</span><input type="password" id="authPass" required /></label>
+        <label class="form-field hidden" id="signupNameWrap"><span data-i18n="modal.name">Display name</span><input id="authName" /></label>
+        <p id="authMessage" class="auth-message"></p>
+        <div class="modal-actions">
+          <button type="button" class="ghost-btn" id="authCancel" data-i18n="modal.cancel">Cancel</button>
+          <button type="submit" class="cta-btn" data-i18n="modal.continue">Continue</button>
+        </div>
+        <button type="button" class="switch-link" id="authSwitch">Need an account? Sign up</button>
+      </section>
+
+      <section id="authStepTaste" class="hidden">
+        <p class="taste-step-copy" data-i18n="taste.step1.copy">영화 한 편을 선택해 주세요.</p>
+        <section id="tasteStepMovie" class="taste-step">
+          <div class="taste-search-row">
+            <input id="tasteMovieQuery" type="text" data-i18n-ph="taste.search.ph" placeholder="영화 제목 검색" />
+            <button type="button" class="ghost-btn" id="tasteMovieSearchBtn" data-i18n="taste.search.btn">검색</button>
+          </div>
+          <div id="tasteMovieResults" class="taste-movie-results"></div>
+          <div id="tasteMovieSelected" class="taste-movie-selected hidden"></div>
+          <div class="modal-actions">
+            <button type="button" class="ghost-btn" id="tasteSignupCancel" data-i18n="modal.cancel">취소</button>
+            <button type="button" class="cta-btn" id="tasteStepNextBtn" data-i18n="taste.next">다음</button>
+          </div>
+        </section>
+
+        <section id="tasteStepTmi" class="taste-step hidden">
+          <p class="taste-step-copy" data-i18n="taste.step2.copy">카테고리와 추천 이유를 입력해 주세요.</p>
+          <label class="form-field">
+            <span data-i18n="taste.category.label">카테고리</span>
+            <select id="tasteCategory">
+              <option value="" data-i18n="taste.category.ph">카테고리 선택</option>
+              <option value="story" data-i18n="taste.category.story">스토리</option>
+              <option value="chat" data-i18n="taste.category.chat">잡담</option>
+              <option value="homage" data-i18n="taste.category.homage">오마주</option>
+            </select>
+          </label>
+          <label class="form-field">
+            <span data-i18n="taste.comment.label">추천 이유</span>
+            <textarea id="tasteContent" maxlength="500" data-i18n-ph="taste.comment.ph" placeholder="이 영화를 추천하는 이유를 적어주세요."></textarea>
+          </label>
+          <p id="tasteSignupMessage" class="auth-message"></p>
+          <div class="modal-actions">
+            <button type="button" class="ghost-btn" id="tasteStepBackBtn" data-i18n="taste.back">이전</button>
+            <button type="button" class="cta-btn" id="tasteSubmitBtn" data-i18n="taste.submit">가입 완료</button>
+          </div>
+        </section>
+      </section>
     </form>
   </dialog>
 
@@ -424,8 +400,8 @@
       </div>
 
       <div>
-        <label class="form-label" for="editProjDesc" data-i18n="create.f.desc">설명</label>
-        <textarea id="editProjDesc" class="form-input" rows="4" maxlength="1000" style="resize:vertical;margin-top:0.25rem"></textarea>
+        <label class="form-label" data-i18n="create.f.desc">설명</label>
+        <div id="editProjDescEditor" class="quill-editor" style="margin-top:0.25rem"></div>
       </div>
 
       <div>
@@ -478,7 +454,7 @@
       </div>
     </div>
     <div class="preq-textarea-wrap">
-      <textarea id="preqText" maxlength="100" placeholder="Enter question." data-i18n-ph="preq.ph"></textarea>
+      <div id="preqTextEditor" class="quill-editor quill-editor--sm quill-editor--compact"></div>
       <span class="preq-count"><span id="preqCount">0</span>/100</span>
     </div>
     <div class="preq-modal-actions">
@@ -488,18 +464,20 @@
 
   <!-- ─── PROJECT DETAIL MODAL ───────────────────────────── -->
   <dialog id="projectDetailModal" class="modal project-detail-modal">
-    <button type="button" class="modal-x-btn" id="projectDetailModalClose">✕</button>
-    <div class="project-detail-modal-body">
-      <div class="detail-main">
-        <span class="genre-tag" id="modalDetailGenre"></span>
-        <h2 class="display-title" id="modalDetailTitle"></h2>
+    <!-- topbar: genre · — · status  ···  close button -->
+    <div class="pdm-topbar">
+      <div class="pdm-topbar-left">
+        <span id="modalDetailGenre" class="pdm-genre"></span>
         <div id="modalDetailStatus"></div>
-        <p class="display-sub" id="modalDetailDesc"></p>
-        <p class="detail-meta" id="modalDetailRegion"></p>
       </div>
-      <div class="detail-slots" id="modalDetailSlots">
-        <p class="slots-label">Open positions</p>
-      </div>
+      <button type="button" class="modal-x-btn" id="projectDetailModalClose">✕</button>
+    </div>
+    <!-- scrollable body -->
+    <div class="pdm-body">
+      <h2 class="pdm-title" id="modalDetailTitle"></h2>
+      <div class="pdm-meta-row" id="modalDetailRegion"></div>
+      <hr class="pdm-divider">
+      <div id="modalDetailSlots"></div>
     </div>
   </dialog>
 
