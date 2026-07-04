@@ -450,6 +450,7 @@ let confirmAction = null;
 let currentUser  = null;
 let chatChannel  = null;
 let currentPreq  = { text: "", required: "none" };
+let discoverProjectsLoadId = 0;
 let pendingSignupDraft = null;
 let selectedTasteMovie = null;
 let signupFlowState = "account";
@@ -632,6 +633,7 @@ async function loadMyPage() {
     sbClient.from("project_participants")
       .select("project_id")
       .eq("user_id", userId)
+      .or("status.eq.confirmed,status.is.null")
       .order("created_at", { ascending: false })
   ]);
 
@@ -656,6 +658,7 @@ async function loadMyPage() {
     ? created.map(p => `<li class="list-item" data-project-id="${p.id}">
         <span>${escapeHtml(p.title)}</span>
         <div class="item-actions">
+          <button class="micro-btn ws-open-btn">${t("ws.open")}</button>
           <button class="micro-btn edit-project-btn">${t("btn.edit")}</button>
           <button class="micro-btn danger delete-project-btn">${t("btn.delete")}</button>
         </div>
@@ -1169,6 +1172,7 @@ authForm.addEventListener("submit", async event => {
   currentUser = result.user;
   renderIdentity();
   pushNotification(t(authMode === "signup" ? "notif.signup" : "notif.login"));
+  await loadDiscoverProjects();
 
   setTimeout(() => {
     authDialog.close();
@@ -1332,9 +1336,14 @@ projectList.addEventListener("click", event => {
   if (!btn) return;
   const joinCard = btn.closest(".project-card");
   if (!joinCard || btn.disabled || joinCard.dataset.status === "closed") return;
-  if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
   const projId = joinCard.dataset.projectId || "";
-  if (projId) joinProject(projId, null);
+  if (!projId) return;
+  if (btn.classList.contains("workspace-btn")) {
+    loadWorkspace(projId);
+    return;
+  }
+  if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
+  joinProject(projId, null);
 });
 
 document.getElementById("projectDetailModal").addEventListener("click", event => {
@@ -1393,6 +1402,17 @@ createdList.addEventListener("click", async event => {
       ? "이 프로젝트를 삭제하면 복구할 수 없습니다. 계속하시겠습니까?"
       : "This project will be permanently deleted. Continue?";
     confirmAction = async () => {
+      const childDeletes = await Promise.all([
+        sbClient.from("project_questions").delete().eq("project_id", projId),
+        sbClient.from("recruitment_details").delete().eq("project_id", projId),
+        sbClient.from("project_participants").delete().eq("project_id", projId)
+      ]);
+      const childError = childDeletes.find(result => result.error)?.error;
+      if (childError) {
+        console.error("[delete-project] child deletion failed:", childError.message);
+        return;
+      }
+
       const { error } = await sbClient.from("projects").delete().eq("id", projId);
       if (error) { console.error("[delete-project]", error.message); return; }
       li.remove();
@@ -1942,6 +1962,7 @@ regionFilter.addEventListener("change", event => {
   applyWorldRegionFilter(event.target.value || "nationwide");
 });
 document.getElementById("statusFilter")?.addEventListener("change", applyFilters);
+document.getElementById("discoverBannerSearch")?.addEventListener("click", applyFilters);
 globalMapSummary?.addEventListener("click", event => {
   const card = event.target.closest(".global-summary-card");
   if (!card) return;
@@ -1955,72 +1976,147 @@ globalMapSummary?.addEventListener("click", event => {
 
 /* ── DISCOVER: load projects from Supabase ───────────────── */
 async function loadDiscoverProjects() {
+  const loadId = ++discoverProjectsLoadId;
   projectList.innerHTML = `<p class="card-loading">${lang === "ko" ? "프로젝트 불러오는 중…" : "Loading projects…"}</p>`;
 
-  const { data, error } = await sbClient
-    .from("projects")
-    .select("id, title, regions, closing_date, recruitment_details(role_name, headcount, min_age, max_age, career_required, actor_role)")
-    .order("created_at", { ascending: false })
-    .limit(30);
+  try {
+    const { data, error } = await sbClient
+      .from("projects")
+      .select("id, title, creator_id, regions, closing_date, recruitment_details(role_name, headcount, min_age, max_age, career_required, actor_role)")
+      .order("created_at", { ascending: false })
+      .limit(30);
 
-  projectList.innerHTML = "";
+    if (loadId !== discoverProjectsLoadId) return;
 
-  if (error || !data || data.length === 0) {
-    projectList.innerHTML = `<p class="card-empty">${lang === "ko" ? "등록된 프로젝트가 없습니다." : "No projects yet."}</p>`;
+    if (error || !data || data.length === 0) {
+      projectList.innerHTML = `<p class="card-empty">${lang === "ko" ? "등록된 프로젝트가 없습니다." : "No projects yet."}</p>`;
+      document.getElementById("openCount").textContent = lang === "ko" ? "0개 모집 중" : "0 open";
+      await renderWorldMapSection([]);
+      applyFilters();
+      return;
+    }
+
+    projectList.innerHTML = "";
+
+    const projectMap = new Map();
+    data.forEach(proj => {
+      if (!proj || !proj.id) return;
+      if (!projectMap.has(proj.id)) {
+        projectMap.set(proj.id, {
+          ...proj,
+          recruitment_details: Array.isArray(proj.recruitment_details) ? proj.recruitment_details.slice() : []
+        });
+      } else {
+        const existing = projectMap.get(proj.id);
+        const newDetails = Array.isArray(proj.recruitment_details) ? proj.recruitment_details : [];
+        existing.recruitment_details = [...existing.recruitment_details, ...newDetails];
+      }
+    });
+
+    const uniqueProjects = Array.from(projectMap.values());
+    const canonicalProjects = Array.from(new Map(uniqueProjects.map(proj => {
+      const titleKey = String(proj.title || "").trim().toLowerCase();
+      const creatorKey = proj.creator_id || "";
+      const projectKey = `${creatorKey}::${titleKey}::${proj.closing_date || ""}`;
+      return [projectKey, proj];
+    })).values());
+
+    if (loadId !== discoverProjectsLoadId) return;
+
+    const openCount = canonicalProjects.filter(p => getProjectStatus(p.closing_date) === "open").length;
+    document.getElementById("openCount").textContent =
+      lang === "ko" ? `${openCount}개 모집 중` : `${openCount} open`;
+
+    await renderWorldMapSection(canonicalProjects);
+
+    if (loadId !== discoverProjectsLoadId) return;
+
+    let participantMap = new Map();
+    if (state.authed) {
+      const { data: { session } } = await sbClient.auth.getSession();
+      if (loadId !== discoverProjectsLoadId) return;
+      if (session?.user) {
+        currentUser = session.user;
+        const { data: myParts, error: partErr } = await sbClient.from("project_participants")
+          .select("project_id,status")
+          .eq("user_id", session.user.id);
+        if (loadId !== discoverProjectsLoadId) return;
+        if (!partErr && myParts) myParts.forEach(p => participantMap.set(p.project_id, p.status));
+      }
+    }
+
+    if (loadId !== discoverProjectsLoadId) return;
+
+    canonicalProjects.forEach((proj, idx) => {
+      const roles         = proj.recruitment_details || [];
+      const primaryRegion = (proj.regions && proj.regions[0]) || "nationwide";
+      const isNation      = (proj.regions || []).includes("nationwide");
+      const dataRole      = roles[0]?.role_name || "all";
+      const isClosed      = getProjectStatus(proj.closing_date) === "closed";
+      const isOwner       = currentUser?.id && proj.creator_id === currentUser.id;
+      const participation = participantMap.get(proj.id);
+      const isRejected    = participation === "rejected";
+      const isConfirmed   = participation === "confirmed" || participation == null;
+
+      const chips = buildRecruitmentChips(roles);
+      const visibleChips = chips.slice(0, 6);
+      const extraCount = Math.max(0, chips.length - visibleChips.length);
+      const tagHtml = visibleChips.map(chip => `<span class="tag">${escapeHtml(chip.label)}</span>`).join("")
+        + (extraCount > 0 ? `<span class="tag tag-more">+${extraCount} more</span>` : "");
+
+      const ownerBadgeHtml = isOwner
+        ? `<span class="project-owner-tag">${lang === "ko" ? "내가 만든 프로젝트" : "My Project"}</span>`
+        : "";
+
+      let actionHtml;
+      if (isOwner) {
+        actionHtml = `<button class="join-btn workspace-btn">${lang === "ko" ? "워크스페이스" : "Workspace"}</button>`;
+      } else if (isClosed) {
+        actionHtml = `<button class="join-btn join-btn--disabled" disabled>${lang === "ko" ? "프로젝트가 종료되었습니다" : "Project has ended"}</button>`;
+      } else if (isRejected) {
+        actionHtml = `<button class="join-btn join-btn--disabled" disabled>${lang === "ko" ? "지원 불가" : "Cannot apply"}</button>`;
+      } else if (isConfirmed && participation === "confirmed") {
+        actionHtml = `<button class="join-btn join-btn--disabled" disabled>${lang === "ko" ? "참여 중" : "Joined"}</button>`;
+      } else {
+        actionHtml = `<button class="join-btn" data-i18n="card.join">${lang === "ko" ? "참여" : "Join"}</button>`;
+      }
+
+      const card = document.createElement("article");
+      card.className = "project-card";
+      card.dataset.role      = dataRole;
+      card.dataset.region    = isNation ? "nationwide" : primaryRegion;
+      card.dataset.projectId = proj.id;
+      card.dataset.status    = isClosed ? "closed" : "open";
+      card.innerHTML = `
+        <div class="card-top">
+          <div class="card-top-left">
+            <span class="card-num">${String(idx + 1).padStart(2, "0")}</span>
+            ${ownerBadgeHtml}
+          </div>
+          ${statusBadgeHtml(proj.closing_date)}
+        </div>
+        <h3 class="card-title">${escapeHtml(proj.title)}</h3>
+        <div class="card-meta">
+          <span>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            ${escapeHtml(t("region." + primaryRegion) || primaryRegion)}
+          </span>
+        </div>
+        <div class="card-tags">${tagHtml}</div>
+        ${actionHtml}
+      `;
+      projectList.appendChild(card);
+    });
+
+    applyFilters();
+  } catch (err) {
+    console.error("[discover] load failed:", err);
+    if (loadId !== discoverProjectsLoadId) return;
+    projectList.innerHTML = `<p class="card-empty">${lang === "ko" ? "프로젝트를 불러오지 못했습니다." : "Unable to load projects."}</p>`;
     document.getElementById("openCount").textContent = lang === "ko" ? "0개 모집 중" : "0 open";
     await renderWorldMapSection([]);
     applyFilters();
-    return;
   }
-
-  const openCount = data.filter(p => getProjectStatus(p.closing_date) === "open").length;
-  document.getElementById("openCount").textContent =
-    lang === "ko" ? `${openCount}개 모집 중` : `${openCount} open`;
-
-  await renderWorldMapSection(data);
-
-  data.forEach((proj, idx) => {
-    const roles         = proj.recruitment_details || [];
-    const primaryRegion = (proj.regions && proj.regions[0]) || "nationwide";
-    const isNation      = (proj.regions || []).includes("nationwide");
-    const dataRole      = roles[0]?.role_name || "all";
-    const isClosed      = getProjectStatus(proj.closing_date) === "closed";
-
-    const chips = buildRecruitmentChips(roles);
-    const visibleChips = chips.slice(0, 6);
-    const extraCount = Math.max(0, chips.length - visibleChips.length);
-    const tagHtml = visibleChips.map(chip => `<span class="tag">${escapeHtml(chip.label)}</span>`).join("")
-      + (extraCount > 0 ? `<span class="tag tag-more">+${extraCount} more</span>` : "");
-
-    const actionHtml = isClosed
-      ? `<button class="join-btn join-btn--disabled" disabled>${lang === "ko" ? "프로젝트가 종료되었습니다" : "Project has ended"}</button>`
-      : `<button class="join-btn" data-i18n="card.join">${lang === "ko" ? "참여" : "Join"}</button>`;
-
-    const card = document.createElement("article");
-    card.className = "project-card";
-    card.dataset.role      = dataRole;
-    card.dataset.region    = isNation ? "nationwide" : primaryRegion;
-    card.dataset.projectId = proj.id;
-    card.dataset.status    = isClosed ? "closed" : "open";
-    card.innerHTML = `
-      <div class="card-top">
-        <span class="card-num">${String(idx + 1).padStart(2, "0")}</span>
-        ${statusBadgeHtml(proj.closing_date)}
-      </div>
-      <h3 class="card-title">${escapeHtml(proj.title)}</h3>
-      <div class="card-meta">
-        <span>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          ${escapeHtml(t("region." + primaryRegion) || primaryRegion)}
-        </span>
-      </div>
-      <div class="card-tags">${tagHtml}</div>
-      ${actionHtml}
-    `;
-    projectList.appendChild(card);
-  });
-
-  applyFilters();
 }
 
 /* ── INIT ─────────────────────────────────────────────────── */
@@ -2032,6 +2128,7 @@ sbClient.auth.onAuthStateChange((event, session) => {
     state.authed = true;
     currentUser  = session.user;
     renderIdentity();
+    loadDiscoverProjects();
   } else if (event === "SIGNED_OUT") {
     clearUserState();
   }
@@ -2232,7 +2329,7 @@ async function joinProject(projId, roleName) {
 
   const { data: project, error: projectErr } = await sbClient
     .from("projects")
-    .select("closing_date")
+    .select("closing_date, creator_id")
     .eq("id", projId)
     .maybeSingle();
   if (projectErr) console.error("[join] Project status fetch error:", projectErr.message);
@@ -2248,6 +2345,10 @@ async function joinProject(projId, roleName) {
     return;
   }
   const userId = session.user.id;
+  if (project.creator_id === userId) {
+    showToast(lang === "ko" ? "내가 만든 프로젝트는 워크스페이스에서 관리하세요." : "Manage your own project in Workspace.");
+    return;
+  }
   console.log("[join] Auth OK — userId:", userId);
 
   // Guard: check for any existing participation record
@@ -2260,8 +2361,11 @@ async function joinProject(projId, roleName) {
   if (existErr) console.error("[join] Existing-check error:", existErr.message);
 
   if (existing) {
-    console.log("[join] Duplicate found — status:", existing.status);
-    showToast(lang === "ko" ? "이미 참여 이력이 있는 프로젝트입니다." : "You have already applied to this project.");
+    if (existing.status === "rejected") {
+      showToast(lang === "ko" ? "지원 조건에 맞지 않아 참여할 수 없습니다." : "You cannot apply due to the response.");
+    } else {
+      showToast(lang === "ko" ? "이미 참여 이력이 있는 프로젝트입니다." : "You have already applied to this project.");
+    }
     return;
   }
   console.log("[join] No existing record — proceeding to pre-screening");
@@ -2329,12 +2433,19 @@ async function initiateJoin(projId, onApproved, onWaiting) {
   preqAnswerNo.onclick = () => {
     console.log("[join] User answered: NO | required:", required);
     cleanup(); preqAnswerDialog.close();
-    (required === "none" || required === "no") ? onApproved() : onWaiting();
+    if (required === "none" || required === "no") {
+      onApproved();
+    } else {
+      onWaiting();
+      showToast(lang === "ko" ? "지원 조건에 맞지 않아 참여할 수 없습니다." : "Your answer does not match the condition.");
+    }
   };
   const closeBtn = document.getElementById("preqAnswerClose");
   if (closeBtn) closeBtn.onclick = () => {
     console.log("[join] Pre-screening dialog dismissed by user");
     cleanup(); preqAnswerDialog.close();
+    onWaiting();
+    showToast(lang === "ko" ? "지원 조건에 맞지 않아 참여할 수 없습니다." : "Your answer does not match the condition.");
   };
   preqAnswerDialog.showModal();
 }

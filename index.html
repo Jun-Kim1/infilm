@@ -55,54 +55,67 @@
         <span class="open-count" id="openCount" data-i18n="discover.open">3 open</span>
       </div>
 
-      <p class="display-sub" data-i18n="discover.sub">Filter by role, region, and production window. Joining requires authentication and clearly communicates policy.</p>
+      <div class="discover-banner" aria-label="Discover hero banner">
+        <div class="discover-banner__overlay"></div>
+        <div class="discover-banner__copy">
+          <strong>역할, 지역, 촬영 기간으로<br>당신에게 딱 맞는 현장을 발견하세요.</strong>
+          <span>지금 바로 조건을 선택하고 원하는 프로젝트를 빠르게 찾아보세요.</span>
+        </div>
 
-      <div class="filter-row">
-        <label class="filter-label">
-          <span data-i18n="filter.role.label">ROLE</span>
-          <select id="roleFilter">
-            <option value="all" data-i18n="role.all">All roles</option>
-            <option value="director" data-i18n="role.director">Director</option>
-            <option value="assdirector" data-i18n="role.assdirector">Asst. Director</option>
-            <option value="maleactor" data-i18n="role.maleactor">Male Actor</option>
-            <option value="femaleactor" data-i18n="role.femaleactor">Female Actor</option>
-            <option value="filming" data-i18n="role.filming">Filming</option>
-            <option value="editing" data-i18n="role.editing">Editing</option>
-            <option value="script" data-i18n="role.script">Script</option>
-            <option value="music" data-i18n="role.music">Music</option>
-          </select>
-        </label>
-        <label class="filter-label">
-          <span data-i18n="filter.region.label">REGION</span>
-          <select id="regionFilter">
-            <option value="nationwide" data-i18n="region.nationwide">Nationwide</option>
-            <option value="seoul" data-i18n="region.seoul">Seoul</option>
-            <option value="gyeonggi" data-i18n="region.gyeonggi">Gyeonggi</option>
-            <option value="incheon" data-i18n="region.incheon">Incheon</option>
-            <option value="gangwon" data-i18n="region.gangwon">Gangwon</option>
-            <option value="chungbuk" data-i18n="region.chungbuk">Chungbuk</option>
-            <option value="chungnam" data-i18n="region.chungnam">Chungnam</option>
-            <option value="daejeon" data-i18n="region.daejeon">Daejeon</option>
-            <option value="sejong" data-i18n="region.sejong">Sejong</option>
-            <option value="jeonbuk" data-i18n="region.jeonbuk">Jeonbuk</option>
-            <option value="jeonnam" data-i18n="region.jeonnam">Jeonnam</option>
-            <option value="gwangju" data-i18n="region.gwangju">Gwangju</option>
-            <option value="gyeongbuk" data-i18n="region.gyeongbuk">Gyeongbuk</option>
-            <option value="gyeongnam" data-i18n="region.gyeongnam">Gyeongnam</option>
-            <option value="daegu" data-i18n="region.daegu">Daegu</option>
-            <option value="busan" data-i18n="region.busan">Busan</option>
-            <option value="ulsan" data-i18n="region.ulsan">Ulsan</option>
-            <option value="jeju" data-i18n="region.jeju">Jeju</option>
-          </select>
-        </label>
-        <label class="filter-label">
-          <span data-i18n="filter.status.label">STATUS</span>
-          <select id="statusFilter">
-            <option value="all" data-i18n="status.all">All</option>
-            <option value="open" data-i18n="status.open">Recruiting</option>
-            <option value="closed" data-i18n="status.closed">Closed</option>
-          </select>
-        </label>
+        <div class="discover-banner__filterbar" aria-label="Discover filters">
+            <label class="filter-label">
+              <span>역할</span>
+              <select id="roleFilter">
+                <option value="all">역할</option>
+                <option value="director">Director</option>
+                <option value="assdirector">Asst. Director</option>
+                <option value="maleactor">Male Actor</option>
+                <option value="femaleactor">Female Actor</option>
+                <option value="filming">Filming</option>
+                <option value="editing">Editing</option>
+                <option value="script">Script</option>
+                <option value="music">Music</option>
+              </select>
+            </label>
+            <label class="filter-label">
+              <span>지역</span>
+              <select id="regionFilter">
+                <option value="nationwide">지역</option>
+                <option value="seoul">Seoul</option>
+                <option value="gyeonggi">Gyeonggi</option>
+                <option value="incheon">Incheon</option>
+                <option value="gangwon">Gangwon</option>
+                <option value="chungbuk">Chungbuk</option>
+                <option value="chungnam">Chungnam</option>
+                <option value="daejeon">Daejeon</option>
+                <option value="sejong">Sejong</option>
+                <option value="jeonbuk">Jeonbuk</option>
+                <option value="jeonnam">Jeonnam</option>
+                <option value="gwangju">Gwangju</option>
+                <option value="gyeongbuk">Gyeongbuk</option>
+                <option value="gyeongnam">Gyeongnam</option>
+                <option value="daegu">Daegu</option>
+                <option value="busan">Busan</option>
+                <option value="ulsan">Ulsan</option>
+                <option value="jeju">Jeju</option>
+              </select>
+            </label>
+            <label class="filter-label">
+              <span>기간</span>
+              <select id="statusFilter">
+                <option value="all">기간</option>
+                <option value="thisweek">이번 주</option>
+                <option value="nextweek">다음 주</option>
+                <option value="thismonth">이번 달</option>
+                <option value="nextmonth">다음 달</option>
+              </select>
+            </label>
+            <button id="discoverBannerSearch" class="discover-banner__search-button" type="button" aria-label="검색" style="display: none;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="16.65" y1="16.65" x2="21" y2="21"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
       </div>
 
       <section class="global-map-section" aria-labelledby="globalMapTitle">

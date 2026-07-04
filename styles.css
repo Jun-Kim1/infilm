@@ -1,4 +1,4 @@
-/* ?�?�?� DESIGN TOKENS ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── DESIGN TOKENS ─────────────────────────────────────────── */
 :root {
   --bg:        #0d0d0d;
   --surface:   #161616;
@@ -27,7 +27,7 @@
   --r-l: 18px;
 }
 
-/* ?�?�?� RESET / BASE ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── RESET / BASE ──────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
 
 html, body {
@@ -49,7 +49,7 @@ a              { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 
-/* ?�?�?� TOPBAR ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── TOPBAR ────────────────────────────────────────────────── */
 .topbar {
   position: sticky;
   top: 0;
@@ -162,7 +162,7 @@ button { cursor: pointer; }
 
 .notify-dot.visible { display: block; }
 
-/* ?�?�?� CTA + GHOST BUTTONS ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── CTA + GHOST BUTTONS ───────────────────────────────────── */
 .cta-btn {
   display: inline-flex;
   align-items: center;
@@ -198,13 +198,13 @@ button { cursor: pointer; }
 
 .ghost-btn:hover { background: var(--surface-2); border-color: var(--text-3); }
 
-/* ?�?�?� CANVAS ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── CANVAS ────────────────────────────────────────────────── */
 .canvas {
   width: min(1160px, calc(100% - 32px));
   margin: 32px auto 64px;
 }
 
-/* ?�?�?� SCREEN ANIMATION ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── SCREEN ANIMATION ──────────────────────────────────────── */
 .screen { display: none; }
 .screen.active {
   display: block;
@@ -216,7 +216,7 @@ button { cursor: pointer; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ?�?�?� SCREEN HEADER ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── SCREEN HEADER ─────────────────────────────────────────── */
 .screen-header {
   display: flex;
   align-items: center;
@@ -246,7 +246,7 @@ button { cursor: pointer; }
   letter-spacing: 0.04em;
 }
 
-/* ?�?�?� DISPLAY TITLE ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── DISPLAY TITLE ─────────────────────────────────────────── */
 .display-title {
   font-size: clamp(28px, 4vw, 42px);
   font-weight: 700;
@@ -259,14 +259,184 @@ button { cursor: pointer; }
   font-size: 15px;
   color: var(--text-2);
   max-width: 58ch;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   line-height: 1.6;
 }
+
+/* ── DISCOVER BANNER ───────────────────────────────────────── */
+/* Layout: filter bar sits near the top-center of the banner,
+   the headline copy sits bottom-left, on top of the artwork. */
+.discover-banner {
+  width: 100%;
+  min-height: 330px;
+  position: relative;
+  background-image: url("./public/Gemini_Generated_Image_ijyls4ijyls4ijyl.png");
+  background-size: cover;
+  background-position: center;
+  border: none;
+  border-radius: 28px;
+  overflow: hidden;
+  margin-bottom: 28px;
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.25), 0 20px 50px rgba(0, 0, 0, 0.2);
+}
+
+.discover-banner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+/* headline block — bottom-left */
+.discover-banner__copy {
+  position: absolute;
+  z-index: 2;
+  left: 40px;
+  bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 600px;
+  color: #ffffff;
+}
+
+.discover-banner__copy strong {
+  display: block;
+  font-size: clamp(20px, 2.6vw, 26px);
+  line-height: 1.25;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  max-width: 26ch;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.discover-banner__copy span {
+  display: block;
+  max-width: 48ch;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  line-height: 1.5;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+/* filter bar — centered in the banner, both horizontally and vertically */
+.discover-banner__filterbar {
+  position: absolute;
+  z-index: 3;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(630px, calc(100% - 80px));
+  display: flex;
+  align-items: center;
+  gap: 27px;
+}
+
+.discover-banner__filterbar .filter-label {
+  flex: 1 1 0;
+  display: grid;
+  gap: 6px;
+}
+
+.discover-banner__filterbar .filter-label > span {
+  display: none; /* label text lives inside the select's own default option instead */
+}
+
+.discover-banner__filterbar select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 999px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition: border-color 200ms ease, background 200ms ease;
+  -webkit-appearance: none;
+  appearance: none;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.discover-banner__filterbar select:hover,
+.discover-banner__filterbar select:focus {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.discover-banner__filterbar select option {
+  color: #1f1f1f;
+  background: #f5f5f5;
+}
+
+/* search button removed from the banner — filtering happens live via the selects */
+.discover-banner__search-button {
+  display: none !important;
+}
+
+@media (max-width: 1000px) {
+  .discover-banner {
+    min-height: 480px;
+  }
+
+  .discover-banner__filterbar {
+    width: calc(100% - 48px);
+  }
+
+  .discover-banner__copy {
+    left: 28px;
+    bottom: 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .discover-banner {
+    min-height: 520px;
+    border-radius: 20px;
+  }
+
+  .discover-banner__filterbar {
+    width: calc(100% - 32px);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .discover-banner__filterbar .filter-label { flex: 1 1 calc(50% - 5px); }
+
+  .discover-banner__filterbar select {
+    min-height: 44px;
+  }
+
+  .discover-banner__search-button {
+    flex: 1 1 100%;
+    width: 100%;
+    border-radius: 18px;
+  }
+
+  .discover-banner__copy {
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    max-width: none;
+  }
+
+  .discover-banner__copy strong {
+    font-size: 20px;
+  }
+
+  .discover-banner__copy span {
+    font-size: 12px;
+  }
+}
+
 #detailDesc {
   white-space: pre-wrap;
 }
 
-/* ?�?�?� FILTER ROW ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── FILTER ROW ────────────────────────────────────────────── */
 .filter-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -399,7 +569,7 @@ select { appearance: none; cursor: pointer; }
 
 textarea { min-height: 110px; resize: vertical; }
 
-/* ?�?�?� PROJECT GRID ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── PROJECT GRID ──────────────────────────────────────────── */
 .project-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -415,15 +585,15 @@ textarea { min-height: 110px; resize: vertical; }
   padding: 40px 0;
 }
 
-/* ?�?�?� PROJECT CARD ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── PROJECT CARD ──────────────────────────────────────────── */
 .project-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-l);
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   transition: border-color 200ms, transform 200ms;
   cursor: pointer;
 }
@@ -437,13 +607,22 @@ textarea { min-height: 110px; resize: vertical; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.card-top-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* ── STATUS BADGE ────────────────────────────────────────────── */
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: 4px 10px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
@@ -472,14 +651,15 @@ textarea { min-height: 110px; resize: vertical; }
 }
 
 .card-title {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.04em;
+  margin: 0;
 }
 
 .card-meta {
   display: flex;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -495,17 +675,16 @@ textarea { min-height: 110px; resize: vertical; }
 
 .card-tags {
   display: flex;
-  gap: 7px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-top: auto;
 }
 
 .tag {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 4px 8px;
+  font-size: 11px;
   color: var(--text-2);
   display: inline-flex;
   align-items: center;
@@ -567,7 +746,7 @@ textarea { min-height: 110px; resize: vertical; }
   border: 1px solid var(--border);
   color: var(--text-1);
   border-radius: var(--r-m);
-  padding: 11px;
+  padding: 10px 14px;
   font-size: 14px;
   font-weight: 500;
   transition: background 150ms, border-color 150ms;
@@ -576,6 +755,29 @@ textarea { min-height: 110px; resize: vertical; }
 .join-btn:hover {
   background: var(--border-2);
   border-color: var(--text-3);
+}
+
+.workspace-btn {
+  background: #1f2937;
+  border-color: rgba(255,255,255,0.16);
+  color: #f8fafc;
+}
+
+.workspace-btn:hover {
+  background: #111827;
+}
+
+.project-owner-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: rgba(243, 145, 36, 0.12);
+  color: #f5c46d;
+  border: 1px solid rgba(243, 145, 36, 0.28);
 }
 
 .join-btn--disabled,
@@ -587,7 +789,7 @@ textarea { min-height: 110px; resize: vertical; }
   pointer-events: none;
 }
 
-/* ?�?�?� GENRE TAGS ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── GENRE TAGS ────────────────────────────────────────────── */
 .genre-tag {
   display: inline-block;
   border-radius: 999px;
@@ -604,7 +806,7 @@ textarea { min-height: 110px; resize: vertical; }
 .genre-tag.drama    { color: var(--drama-text);    background: var(--drama-bg);    border-color: var(--drama-bd);    }
 .genre-tag.mystery  { color: var(--mystery-text);  background: var(--mystery-bg);  border-color: var(--mystery-bd);  }
 
-/* ?�?�?� FOOTER HINT ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── FOOTER HINT ───────────────────────────────────────────── */
 .footer-hint {
   display: flex;
   align-items: center;
@@ -613,7 +815,7 @@ textarea { min-height: 110px; resize: vertical; }
   color: var(--text-3);
 }
 
-/* ?�?�?� PLANS ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── PLANS ─────────────────────────────────────────────────── */
 .plans-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -672,13 +874,13 @@ textarea { min-height: 110px; resize: vertical; }
 }
 
 .plan-list li::before {
-  content: '??';
+  content: '✓';
   color: var(--text-3);
 }
 
 .plan-pick { margin-top: auto; width: 100%; justify-content: center; }
 
-/* ?�?�?� CREATE FORM ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── CREATE FORM ───────────────────────────────────────────── */
 .create-form { display: flex; flex-direction: column; max-width: 700px; }
 
 .cf-row {
@@ -904,7 +1106,7 @@ textarea { min-height: 110px; resize: vertical; }
 
 .submit-btn { align-self: flex-start; border-radius: var(--r-m); padding: 12px 24px; font-size: 15px; }
 
-/* ?�?�?� PROJECT DETAIL ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── PROJECT DETAIL ────────────────────────────────────────── */
 .project-detail {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
@@ -1285,7 +1487,7 @@ textarea { min-height: 110px; resize: vertical; }
 
 .status-pill.complete { background: rgba(52,211,153,.1); color: #34d399; border: 1px solid rgba(52,211,153,.25); }
 
-/* ?�?�?� COLLAB HUB ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── COLLAB HUB ────────────────────────────────────────────── */
 .back-btn {
   display: flex;
   align-items: center;
@@ -1399,7 +1601,7 @@ textarea { min-height: 110px; resize: vertical; }
   border: 1px solid rgba(232,160,32,.25);
 }
 
-/* ?�?�?� NOTIFICATION DRAWER ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── NOTIFICATION DRAWER ───────────────────────────────────── */
 .drawer {
   position: fixed;
   top: 0; right: 0;
@@ -1489,7 +1691,7 @@ textarea { min-height: 110px; resize: vertical; }
   transform: translateX(-50%) translateY(0);
 }
 
-/* ?�?�?� MODAL ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── MODAL ─────────────────────────────────────────────────── */
 .modal {
   background: var(--surface);
   border: 1px solid var(--border-2);
@@ -2060,7 +2262,7 @@ input[type="date"] {
   text-align: right;
 }
 
-/* ?�?�?� RESPONSIVE ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
+/* ── RESPONSIVE ────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .project-grid,
   .plans-grid,
@@ -2117,7 +2319,7 @@ input[type="date"] {
   .modal { width: calc(100vw - 24px); }
 }
 
-/* ���� SERVICE SIDEBAR ������������������������������������������������������������������������������������������������ */
+/* ── SERVICE SIDEBAR ─────────────────────────────────────────── */
 .service-sidebar {
   position: fixed;
   left: 0;
@@ -2192,66 +2394,6 @@ input[type="date"] {
 .svc-icon:hover .svc-tooltip {
   opacity: 1;
 }
-
-/* -- SERVICE SIDEBAR ------------------------------------------------- */
-.service-sidebar {
-  position: fixed;
-  left: 0; top: 0; bottom: 0;
-  width: 56px;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 0;
-  gap: 4px;
-  z-index: 200;
-}
-.svc-icon {
-  position: relative;
-  width: 40px; height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--r-s);
-  color: var(--text-3);
-  transition: background 0.15s, color 0.15s;
-  text-decoration: none;
-}
-.svc-icon:hover { background: var(--surface-2); color: var(--text-1); }
-.svc-icon.svc-active {
-  background: rgba(232,160,32,0.10);
-  color: var(--cta);
-}
-.svc-icon.svc-active::before {
-  content: "";
-  position: absolute;
-  left: -12px; top: 50%;
-  transform: translateY(-50%);
-  width: 3px; height: 20px;
-  background: var(--cta);
-  border-radius: 0 3px 3px 0;
-}
-.svc-tooltip {
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--surface-2);
-  border: 1px solid var(--border-2);
-  color: var(--text-1);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 5px 10px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.12s;
-  z-index: 300;
-}
-.svc-icon:hover .svc-tooltip { opacity: 1; }
 
 .service-sidebar-backdrop {
   display: none;
