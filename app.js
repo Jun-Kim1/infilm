@@ -115,6 +115,11 @@ const i18n = {
     "create.f.headcount": "Headcount", "create.f.age": "Age",
     "create.f.career": "Career", "create.f.career.any": "Any",
     "create.f.career.1y": "1yr+", "create.f.career.3y": "3yr+", "create.f.career.5y": "5yr+",
+    "create.f.actorrole": "Actor role",
+    "create.f.actorrole.lead": "Lead",
+    "create.f.actorrole.support": "Supporting",
+    "create.f.actorrole.bit": "Bit part",
+    "create.f.slot": "Slot",
     "create.f.preq": "Pre-screen question",
     "create.f.preq.opt": "(optional)",
     "preq.none": "No question set",
@@ -275,6 +280,11 @@ const i18n = {
     "create.f.headcount": "모집인원", "create.f.age": "나이",
     "create.f.career": "경력", "create.f.career.any": "경력 무관",
     "create.f.career.1y": "1년 이상", "create.f.career.3y": "3년 이상", "create.f.career.5y": "5년 이상",
+    "create.f.actorrole": "배우 역할",
+    "create.f.actorrole.lead": "주연",
+    "create.f.actorrole.support": "조연",
+    "create.f.actorrole.bit": "단역",
+    "create.f.slot": "지원자",
     "create.f.preq": "사전 질문",
     "create.f.preq.opt": "(선택사항)",
     "preq.none": "설정된 질문이 없습니다",
@@ -763,7 +773,7 @@ async function loadProjectDetail(projectId) {
   try {
     const { data: proj, error } = await sbClient
       .from("projects")
-      .select("id, title, description, regions, closing_date, creator_id, recruitment_details(role_name, headcount, min_age, max_age, career_required)")
+      .select("id, title, description, regions, closing_date, creator_id, recruitment_details(role_name, headcount, min_age, max_age, career_required, actor_role)")
       .eq("id", projectId)
       .single();
 
@@ -785,12 +795,8 @@ async function loadProjectDetail(projectId) {
       .map(r => t("region." + r) || r)
       .join(" · ") || (lang === "ko" ? "전국" : "Nationwide");
     const roles = proj.recruitment_details || [];
-    const rolePills = roles.slice(0, 4).map(r => {
-      const roleName = t("role." + r.role_name) || r.role_name;
-      const agePart  = (r.min_age && r.max_age)
-        ? ` ${r.min_age}–${r.max_age}${lang === "ko" ? "세" : ""}`
-        : "";
-      return `<span class="pdm-meta-pill">${escapeHtml(roleName)}${agePart} ×${r.headcount}</span>`;
+    const rolePills = buildRecruitmentChips(roles).slice(0, 4).map(r => {
+      return `<span class="pdm-meta-pill">${escapeHtml(r.label)}</span>`;
     }).join("");
     const regionEl = document.getElementById("modalDetailRegion");
     if (regionEl) {
@@ -812,21 +818,20 @@ async function loadProjectDetail(projectId) {
 
     // recruitment section with colour-coded role cards
     const rolesLabel = lang === "ko" ? "모집 부문" : "Open Positions";
-    const roleCardsHtml = roles.length
-      ? roles.map(r => {
-          const roleName   = t("role." + r.role_name) || r.role_name;
-          const colorClass = getRoleColorClass(r.role_name);
-          const ageMeta    = (r.min_age && r.max_age)
-            ? `${r.min_age}–${r.max_age}${lang === "ko" ? "세" : " y.o."}`
-            : "";
-          const countText  = lang === "ko" ? `×${r.headcount}명 모집` : `×${r.headcount} wanted`;
-          const metaStr    = [ageMeta, countText].filter(Boolean).join("  ·  ");
+    const detailChips = buildRecruitmentChips(roles);
+    const roleCardsHtml = detailChips.length
+      ? detailChips.map(chip => {
+          const roleName   = chip.role_name;
+          const colorClass = getRoleColorClass(roleName);
+          const fullLabel = chip.label;
+          const displayName = fullLabel.replace(/ ×.*$/, "");
+          const metaStr = fullLabel.slice(displayName.length).trim();
           return `<div class="role-card ${colorClass}">
             <div class="rc-info">
-              <span class="rc-name">${escapeHtml(roleName)}</span>
+              <span class="rc-name">${escapeHtml(displayName)}</span>
               <span class="rc-detail">${escapeHtml(metaStr)}</span>
             </div>
-            <button class="rc-join role-join" data-role="${escapeHtml(r.role_name)}" data-project-id="${escapeHtml(proj.id)}">
+            <button class="rc-join role-join" data-role="${escapeHtml(roleName)}" data-project-id="${escapeHtml(proj.id)}">
               ${lang === "ko" ? "참여" : "Join"}
             </button>
           </div>`;
@@ -1052,8 +1057,16 @@ async function handleSignup(payload) {
 
 /* ── EVENT LISTENERS ──────────────────────────────────────── */
 navItems.forEach(item => item.addEventListener("click", () => {
-  if (item.dataset.screen === "mypage")  { loadMyPage(); }
-  setScreen(item.dataset.screen);
+  const screenId = item.dataset.screen;
+  if ((screenId === "create" || screenId === "mypage") && !state.authed) {
+    authMode = "login";
+    updateAuthCopy();
+    authDialog.showModal();
+    return;
+  }
+
+  if (screenId === "mypage") { loadMyPage(); }
+  setScreen(screenId);
 }));
 
 document.querySelector(".wordmark").addEventListener("click", e => {
@@ -1317,9 +1330,10 @@ projectList.addEventListener("click", event => {
   }
 
   if (!btn) return;
-  if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
   const joinCard = btn.closest(".project-card");
-  const projId   = joinCard?.dataset.projectId || "";
+  if (!joinCard || btn.disabled || joinCard.dataset.status === "closed") return;
+  if (!state.authed) { authMode = "login"; updateAuthCopy(); authDialog.showModal(); return; }
+  const projId = joinCard.dataset.projectId || "";
   if (projId) joinProject(projId, null);
 });
 
@@ -1428,15 +1442,25 @@ function collectFormData() {
   const regions   = regionCbs.length ? regionCbs.map(cb => cb.value) : ["nationwide"];
 
   const roles = [...document.querySelectorAll("#roleDetails .role-dp")].map(dp => {
-    const hcVal = dp.querySelector(".dp-headcount")?.dataset.value ?? "1";
-    const minVal = dp.querySelector(".dp-age-min")?.dataset.value;
-    const maxVal = dp.querySelector(".dp-age-max")?.dataset.value;
+    const headcount = parseHeadcountValue(dp.querySelector(".dp-headcount")?.dataset.value ?? "1");
+    const slots = [...dp.querySelectorAll(".role-slot-card")].map(slot => {
+      const minRaw = slot.querySelector(".dp-age-min")?.dataset.value;
+      const maxRaw = slot.querySelector(".dp-age-max")?.dataset.value;
+      const careerVal = slot.querySelector(".dp-career")?.dataset.value || "any";
+      return {
+        minAge: isNaN(parseInt(minRaw, 10)) ? null : parseInt(minRaw, 10),
+        maxAge: isNaN(parseInt(maxRaw, 10)) ? null : parseInt(maxRaw, 10),
+        career: careerVal,
+        actorRole: slot.querySelector(".dp-actor-role")?.dataset.value || null
+      };
+    });
     return {
       role:      dp.dataset.role,
-      headcount: hcVal === "6+" ? 6 : (parseInt(hcVal) || 1),
-      minAge:    (minVal && minVal !== "") ? parseInt(minVal) : null,
-      maxAge:    (maxVal && maxVal !== "") ? parseInt(maxVal) : null,
-      career:    (dp.querySelector(".dp-career")?.dataset.value || "any") !== "any"
+      headcount,
+      minAge:    slots.reduce((current, slot) => slot.minAge !== null ? (current === null ? slot.minAge : Math.min(current, slot.minAge)) : current, null),
+      maxAge:    slots.reduce((current, slot) => slot.maxAge !== null ? (current === null ? slot.maxAge : Math.max(current, slot.maxAge)) : current, null),
+      career:    slots.some(slot => slot.career !== "any"),
+      slots
     };
   });
 
@@ -1476,18 +1500,32 @@ async function createProject(formData) {
 
   // ── Step 2: batch-insert recruitment_details ─────────────────
   if (formData.roles.length > 0) {
+    const detailsToInsert = formData.roles.flatMap(r => {
+      const slotRows = (Array.isArray(r.slots) && r.slots.length)
+        ? r.slots.map(slot => ({
+            project_id:      projectId,
+            role_name:       r.role,
+            headcount:       1,
+            min_age:         slot.minAge,
+            max_age:         slot.maxAge,
+            career_required: slot.career === "any" ? null : slot.career,
+            actor_role:      slot.actorRole || null
+          }))
+        : [{
+            project_id:      projectId,
+            role_name:       r.role,
+            headcount:       r.headcount,
+            min_age:         r.minAge,
+            max_age:         r.maxAge,
+            career_required: r.career === "any" ? null : r.career,
+            actor_role:      null
+          }];
+      return slotRows;
+    });
+
     const { error: rolesError } = await sbClient
       .from("recruitment_details")
-      .insert(
-        formData.roles.map(r => ({
-          project_id:      projectId,
-          role_name:       r.role,
-          headcount:       r.headcount,
-          min_age:         r.minAge,
-          max_age:         r.maxAge,
-          career_required: r.career
-        }))
-      );
+      .insert(detailsToInsert);
     if (rolesError) throw rolesError;
   }
 
@@ -1654,6 +1692,132 @@ function careerOpts() {
   ];
 }
 
+function actorRoleOpts() {
+  return [
+    { value: "lead",    label: t("create.f.actorrole.lead") },
+    { value: "support", label: t("create.f.actorrole.support") },
+    { value: "bit",     label: t("create.f.actorrole.bit") }
+  ];
+}
+
+function isActorRole(role) {
+  return role === "maleactor" || role === "femaleactor";
+}
+
+function formatActorRoleLabel(actorRole) {
+  if (!actorRole) return "";
+  return t("create.f.actorrole." + actorRole) || actorRole;
+}
+
+function buildRecruitmentChips(rows) {
+  const chips = rows.map(r => {
+    const roleName = t("role." + r.role_name) || r.role_name;
+    const actorLabel = isActorRole(r.role_name) && r.actor_role
+      ? `(${formatActorRoleLabel(r.actor_role)})`
+      : "";
+    const agePart = (r.min_age && r.max_age)
+      ? ` / ${r.min_age}–${r.max_age}`
+      : "";
+    const careerPart = r.career_required
+      ? ` / ${t("create.f.career." + r.career_required) || r.career_required}`
+      : "";
+    const headcount = parseInt(r.headcount, 10) || 1;
+    return {
+      key: `${r.role_name}|${r.actor_role || ""}|${r.min_age || ""}|${r.max_age || ""}|${r.career_required || ""}`,
+      role_name: r.role_name,
+      label: `${roleName}${actorLabel} ×${headcount}${agePart}${careerPart}`,
+      headcount
+    };
+  });
+
+  const grouped = chips.reduce((acc, chip) => {
+    if (!acc[chip.key]) acc[chip.key] = { role_name: chip.role_name, label: chip.label, count: 0 };
+    acc[chip.key].count += chip.headcount;
+    return acc;
+  }, {});
+
+  return Object.values(grouped).map(item => {
+    const label = item.count > 1
+      ? item.label.replace(/×\d+/, `×${item.count}`)
+      : item.label;
+    return { role_name: item.role_name, label, count: item.count };
+  });
+}
+
+function parseHeadcountValue(value) {
+  return value === "6+" ? 6 : (parseInt(value, 10) || 1);
+}
+
+function createRoleSlot(role, index) {
+  const slot = document.createElement("div");
+  slot.className = "role-slot-card";
+  slot.dataset.slotIndex = index;
+
+  const header = document.createElement("div");
+  header.className = "role-slot-header";
+  header.innerHTML = `<span>${t("create.f.slot")}</span><span class="role-slot-number">${index + 1}</span>`;
+  slot.appendChild(header);
+
+  const fields = document.createElement("div");
+  fields.className = "role-slot-fields";
+
+  const ageGroup = document.createElement("div");
+  ageGroup.className = "role-dp-group";
+  ageGroup.innerHTML = `<span>${t("create.f.age")}</span>`;
+  ageGroup.appendChild(buildCsel(ageOpts(), "dp-age-min"));
+  const tilde = document.createElement("span");
+  tilde.textContent = "~";
+  tilde.className = "dp-tilde";
+  ageGroup.appendChild(tilde);
+  ageGroup.appendChild(buildCsel(ageOpts(), "dp-age-max"));
+  fields.appendChild(ageGroup);
+
+  const careerGroup = document.createElement("div");
+  careerGroup.className = "role-dp-group";
+  careerGroup.innerHTML = `<span>${t("create.f.career")}</span>`;
+  careerGroup.appendChild(buildCsel(careerOpts(), "dp-career"));
+  fields.appendChild(careerGroup);
+
+  if (isActorRole(role)) {
+    const actorGroup = document.createElement("div");
+    actorGroup.className = "role-dp-group";
+    actorGroup.innerHTML = `<span>${t("create.f.actorrole")}</span>`;
+    actorGroup.appendChild(buildCsel(actorRoleOpts(), "dp-actor-role"));
+    fields.appendChild(actorGroup);
+  }
+
+  slot.appendChild(fields);
+  return slot;
+}
+
+function updateRoleSlots(dp) {
+  const headcountCsel = dp.querySelector(".dp-headcount");
+  const desiredCount = parseHeadcountValue(headcountCsel?.dataset.value ?? "1");
+  let slotWrap = dp.querySelector(".role-slot-wrap");
+  if (!slotWrap) {
+    slotWrap = document.createElement("div");
+    slotWrap.className = "role-slot-wrap";
+    dp.appendChild(slotWrap);
+  }
+
+  const existingSlots = [...slotWrap.querySelectorAll(".role-slot-card")];
+  while (existingSlots.length < desiredCount) {
+    const slot = createRoleSlot(dp.dataset.role, existingSlots.length);
+    slotWrap.appendChild(slot);
+    existingSlots.push(slot);
+  }
+  while (existingSlots.length > desiredCount) {
+    const removed = existingSlots.pop();
+    if (removed) removed.remove();
+  }
+
+  existingSlots.forEach((slot, index) => {
+    slot.dataset.slotIndex = index;
+    const label = slot.querySelector(".role-slot-number");
+    if (label) label.textContent = String(index + 1);
+  });
+}
+
 function syncRolePanels() {
   const wrap    = document.getElementById("roleDetails");
   const checked = new Set([...document.querySelectorAll(".role-cb:checked")].map(c => c.value));
@@ -1670,23 +1834,20 @@ function syncRolePanels() {
     // headcount
     const hg = document.createElement("div"); hg.className = "role-dp-group";
     hg.innerHTML = `<span>${t("create.f.headcount")}</span>`;
-    hg.appendChild(buildCsel(headcountOpts(), "dp-headcount"));
+    const headcountCsel = buildCsel(headcountOpts(), "dp-headcount");
+    hg.appendChild(headcountCsel);
     fields.appendChild(hg);
-    // age
-    const ag = document.createElement("div"); ag.className = "role-dp-group";
-    ag.innerHTML = `<span>${t("create.f.age")}</span>`;
-    ag.appendChild(buildCsel(ageOpts(), "dp-age-min"));
-    const tilde = document.createElement("span"); tilde.textContent = "\u007e"; tilde.className = "dp-tilde";
-    ag.appendChild(tilde);
-    ag.appendChild(buildCsel(ageOpts(), "dp-age-max"));
-    fields.appendChild(ag);
-    // career
-    const cg = document.createElement("div"); cg.className = "role-dp-group";
-    cg.innerHTML = `<span>${t("create.f.career")}</span>`;
-    cg.appendChild(buildCsel(careerOpts(), "dp-career"));
-    fields.appendChild(cg);
     dp.appendChild(nameEl);
     dp.appendChild(fields);
+
+    if (isActorRole(role)) {
+      const slotWrap = document.createElement("div");
+      slotWrap.className = "role-slot-wrap";
+      dp.appendChild(slotWrap);
+      headcountCsel.addEventListener("change", () => updateRoleSlots(dp));
+      updateRoleSlots(dp);
+    }
+
     const next = [...wrap.querySelectorAll(".role-dp")].find(p => ROLE_ORDER.indexOf(p.dataset.role) > ROLE_ORDER.indexOf(role));
     next ? wrap.insertBefore(dp, next) : wrap.appendChild(dp);
   });
@@ -1694,30 +1855,7 @@ function syncRolePanels() {
 
 document.querySelectorAll(".role-cb").forEach(cb => cb.addEventListener("change", syncRolePanels));
 
-chatForm.addEventListener("submit", async event => {
-  event.preventDefault();
-  const text = chatInput.value.trim();
-  if (!text || !activeProjectId) return;
-  chatInput.value = "";
-  chatInput.disabled = true;
-
-  const senderId = currentUser?.id ?? null;
-  const payload = { project_id: activeProjectId, sender_id: senderId, message: text };
-  console.log("[chat] inserting:", payload);
-
-  const { data: insertData, error } = await sbClient.from("chat_messages").insert(payload).select();
-  console.log("[chat] insert result → data:", insertData, "error:", error);
-
-  chatInput.disabled = false;
-  chatInput.focus();
-  if (error) {
-    console.error("[chat] insert failed:", error.message);
-    // Fallback: show message locally so the user isn't left wondering
-    appendChatMsg(currentUser?.email || "나", text);
-  }
-  // On success the realtime subscription will append the message
-  pushNotification(t("notif.chat"));
-});
+document.querySelectorAll(".role-cb:checked").forEach(cb => cb.checked && syncRolePanels());
 
 function applyFilters() {
   const role   = roleFilter.value;
@@ -1821,7 +1959,7 @@ async function loadDiscoverProjects() {
 
   const { data, error } = await sbClient
     .from("projects")
-    .select("id, title, regions, closing_date, recruitment_details(role_name, headcount, min_age, max_age)")
+    .select("id, title, regions, closing_date, recruitment_details(role_name, headcount, min_age, max_age, career_required, actor_role)")
     .order("created_at", { ascending: false })
     .limit(30);
 
@@ -1846,20 +1984,24 @@ async function loadDiscoverProjects() {
     const primaryRegion = (proj.regions && proj.regions[0]) || "nationwide";
     const isNation      = (proj.regions || []).includes("nationwide");
     const dataRole      = roles[0]?.role_name || "all";
+    const isClosed      = getProjectStatus(proj.closing_date) === "closed";
 
-    const tagHtml = roles.slice(0, 3).map(r => {
-      const roleName = t("role." + r.role_name) || r.role_name;
-      let label = `${roleName} ×${r.headcount}`;
-      if (r.min_age && r.max_age) label += ` / ${r.min_age}–${r.max_age}`;
-      return `<span class="tag">${escapeHtml(label)}</span>`;
-    }).join("");
+    const chips = buildRecruitmentChips(roles);
+    const visibleChips = chips.slice(0, 6);
+    const extraCount = Math.max(0, chips.length - visibleChips.length);
+    const tagHtml = visibleChips.map(chip => `<span class="tag">${escapeHtml(chip.label)}</span>`).join("")
+      + (extraCount > 0 ? `<span class="tag tag-more">+${extraCount} more</span>` : "");
+
+    const actionHtml = isClosed
+      ? `<button class="join-btn join-btn--disabled" disabled>${lang === "ko" ? "프로젝트가 종료되었습니다" : "Project has ended"}</button>`
+      : `<button class="join-btn" data-i18n="card.join">${lang === "ko" ? "참여" : "Join"}</button>`;
 
     const card = document.createElement("article");
     card.className = "project-card";
     card.dataset.role      = dataRole;
     card.dataset.region    = isNation ? "nationwide" : primaryRegion;
     card.dataset.projectId = proj.id;
-    card.dataset.status    = getProjectStatus(proj.closing_date);
+    card.dataset.status    = isClosed ? "closed" : "open";
     card.innerHTML = `
       <div class="card-top">
         <span class="card-num">${String(idx + 1).padStart(2, "0")}</span>
@@ -1873,7 +2015,7 @@ async function loadDiscoverProjects() {
         </span>
       </div>
       <div class="card-tags">${tagHtml}</div>
-      <button class="join-btn" data-i18n="card.join">${lang === "ko" ? "참여" : "Join"}</button>
+      ${actionHtml}
     `;
     projectList.appendChild(card);
   });
@@ -2087,6 +2229,17 @@ document.getElementById("joinedList").addEventListener("click", event => {
 async function joinProject(projId, roleName) {
   console.log("[join] joinProject called — projId:", projId, "| roleName:", roleName);
   if (!projId) { console.warn("[join] No projId, aborting."); return; }
+
+  const { data: project, error: projectErr } = await sbClient
+    .from("projects")
+    .select("closing_date")
+    .eq("id", projId)
+    .maybeSingle();
+  if (projectErr) console.error("[join] Project status fetch error:", projectErr.message);
+  if (!project || getProjectStatus(project.closing_date) === "closed") {
+    showToast(lang === "ko" ? "종료된 프로젝트입니다." : "This project has ended.");
+    return;
+  }
 
   const { data: { session } } = await sbClient.auth.getSession();
   if (!session?.user) {

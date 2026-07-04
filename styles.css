@@ -507,6 +507,58 @@ textarea { min-height: 110px; resize: vertical; }
   padding: 4px 10px;
   font-size: 12px;
   color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag-more {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-3);
+}
+
+.project-card .card-tags {
+  margin-top: 14px;
+  gap: 6px;
+}
+
+.role-card {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.role-card .rc-info {
+  min-width: 0;
+  flex: 1 1 160px;
+}
+
+.role-card .rc-name {
+  display: block;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.role-card .rc-detail {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.4;
+}
+
+.role-card .rc-join {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .join-btn {
@@ -521,7 +573,19 @@ textarea { min-height: 110px; resize: vertical; }
   transition: background 150ms, border-color 150ms;
 }
 
-.join-btn:hover { background: var(--border-2); border-color: var(--text-3); }
+.join-btn:hover {
+  background: var(--border-2);
+  border-color: var(--text-3);
+}
+
+.join-btn--disabled,
+.join-btn:disabled {
+  background: var(--surface-3);
+  border-color: var(--border-2);
+  color: var(--text-3);
+  cursor: not-allowed;
+  pointer-events: none;
+}
 
 /* ?�?�?� GENRE TAGS ?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?�?� */
 .genre-tag {
@@ -705,6 +769,44 @@ textarea { min-height: 110px; resize: vertical; }
 }
 
 .role-dp-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  align-items: center;
+}
+
+.role-slot-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  grid-column: 1 / -1;
+}
+
+.role-slot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(147,160,181,0.18);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.role-slot-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.role-slot-number {
+  color: var(--cta);
+}
+
+.role-slot-fields {
   display: flex;
   flex-wrap: wrap;
   gap: 10px 18px;
