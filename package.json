@@ -5,7 +5,8 @@
   "type": "commonjs",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check:i18n": "node check_i18n.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

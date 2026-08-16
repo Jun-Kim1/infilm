@@ -49,6 +49,9 @@ const i18n = {
     "discover.label": "DISCOVERY", "discover.open": "0 open",
     "discover.title1": "Find the right crew", "discover.title2": "or join the right project",
     "discover.sub": "Discover the set that fits you best by role, region, and shooting period.",
+    "discover.banner.title1": "Find the right set by role, region, and shooting period.",
+    "discover.banner.title2": "Discover the project that fits you.",
+    "discover.banner.sub": "Choose your preferences and quickly find the right project.",
     "discover.footer": "More projects loading as crews publish their calls",
     "global.label": "01 - GLOBAL",
     "global.title": "Regional recruiting activity",
@@ -57,6 +60,13 @@ const i18n = {
     "global.viewMap": "View map",
     "global.modalTitle": "Regional recruiting activity",
     "filter.role.label": "ROLE", "filter.region.label": "REGION", "filter.status.label": "STATUS",
+    "filter.period.label": "PERIOD", "filter.period.all": "All periods",
+    "filter.period.thisWeek": "This week", "filter.period.nextWeek": "Next week",
+    "filter.period.thisMonth": "This month", "filter.period.nextMonth": "Next month",
+    "a11y.serviceMenu": "Toggle service menu", "a11y.mainNavigation": "Main navigation",
+    "a11y.toggleLanguage": "Toggle language", "a11y.notifications": "Notifications",
+    "a11y.discoverBanner": "Discover hero banner", "a11y.discoverFilters": "Discover filters",
+    "a11y.search": "Search", "a11y.serviceSwitcher": "Service switcher",
     "status.all": "All", "status.open": "Recruiting", "status.closed": "Closed",
     "create.f.deadline": "Recruitment deadline",
     "role.all": "All roles", "role.director": "Director", "role.screenwriter": "Screenwriter",
@@ -214,6 +224,9 @@ const i18n = {
     "discover.title1": "번거로움 없이 딱 맞는 크루를 찾거나,",
     "discover.title2": "프로젝트에 참여하세요",
     "discover.sub": "역할, 지역, 촬영 기간으로 당신에게 딱 맞는 현장을 발견하세요.",
+    "discover.banner.title1": "역할, 지역, 촬영 기간으로",
+    "discover.banner.title2": "당신에게 딱 맞는 현장을 발견하세요.",
+    "discover.banner.sub": "지금 바로 조건을 선택하고 원하는 프로젝트를 빠르게 찾아보세요.",
     "discover.footer": "새 프로젝트가 계속 추가되고 있습니다",
     "global.label": "01 - GLOBAL",
     "global.title": "지역별 모집 현황",
@@ -222,6 +235,13 @@ const i18n = {
     "global.viewMap": "맵으로 보기",
     "global.modalTitle": "지역별 모집 현황",
     "filter.role.label": "역할", "filter.region.label": "지역", "filter.status.label": "모집 상태",
+    "filter.period.label": "기간", "filter.period.all": "전체 기간",
+    "filter.period.thisWeek": "이번 주", "filter.period.nextWeek": "다음 주",
+    "filter.period.thisMonth": "이번 달", "filter.period.nextMonth": "다음 달",
+    "a11y.serviceMenu": "서비스 메뉴 열기/닫기", "a11y.mainNavigation": "주요 탐색 메뉴",
+    "a11y.toggleLanguage": "언어 전환", "a11y.notifications": "알림",
+    "a11y.discoverBanner": "프로젝트 탐색 배너", "a11y.discoverFilters": "프로젝트 탐색 필터",
+    "a11y.search": "검색", "a11y.serviceSwitcher": "서비스 전환 메뉴",
     "status.all": "전체", "status.open": "모집 중", "status.closed": "종료",
     "create.f.deadline": "모집 마감일",
     "role.all": "전체 역할", "role.director": "감독", "role.screenwriter": "작가",
@@ -497,6 +517,10 @@ function applyLang(l) {
   document.querySelectorAll("[data-i18n-ph]").forEach(el => {
     const val = i18n[l][el.dataset.i18nPh];
     if (val !== undefined) el.placeholder = val;
+  });
+  document.querySelectorAll("[data-i18n-aria]").forEach(el => {
+    const val = i18n[l][el.dataset.i18nAria];
+    if (val !== undefined) el.setAttribute("aria-label", val);
   });
 
   updateAuthCopy();
