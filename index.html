@@ -331,7 +331,10 @@
 
       <!-- Chat panel -->
       <div class="ws-panel" id="wsPanelChat">
-        <div class="chat-log" id="chatLog"><p class="ws-panel-state" data-i18n="ws.chat.loading">Loading messages…</p></div>
+        <div class="chat-log" id="chatLog">
+          <button class="chat-load-older" id="chatLoadOlder" type="button" data-i18n="ws.chat.older" hidden>Load older messages</button>
+          <p class="ws-panel-state" data-i18n="ws.chat.loading">Loading messages…</p>
+        </div>
         <form class="chat-compose" id="chatForm">
           <input id="chatInput" placeholder="Write a message…" data-i18n-ph="ws.chat.ph" maxlength="1000" autocomplete="off" />
           <button class="cta-btn" type="submit" data-i18n="ws.chat.send">Send</button>

@@ -165,6 +165,23 @@
   text-align: center;
 }
 
+.chat-load-older {
+  align-self: center;
+  margin: 0 auto 2px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-2);
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chat-load-older:hover { border-color: var(--cta); color: var(--cta); }
+.chat-load-older:disabled { cursor: wait; opacity: .6; }
+.chat-load-older[hidden] { display: none; }
+
 .chat-msg.is-mine { align-items: flex-end; }
 .chat-msg.is-mine .chat-author { color: var(--cta); }
 .chat-msg p {

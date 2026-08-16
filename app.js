@@ -177,6 +177,7 @@ const i18n = {
     "ws.tab.chat": "Chat", "ws.tab.calendar": "Calendar",
     "ws.chat.ph": "Write a message\u2026", "ws.chat.send": "Send",
     "ws.chat.loading": "Loading messages\u2026", "ws.chat.empty": "No messages yet. Start the conversation.",
+    "ws.chat.older": "Load older messages", "ws.chat.loadingOlder": "Loading older messages\u2026",
     "ws.chat.loadError": "Unable to load messages.", "ws.chat.sendError": "Failed to send the message.",
     "ws.event.ph": "Event title", "ws.event.add": "Add",
     "ws.event.empty": "No events yet.", "ws.event.loadError": "Unable to load the calendar.",
@@ -369,6 +370,7 @@ const i18n = {
     "ws.tab.chat": "채팅", "ws.tab.calendar": "캘린더",
     "ws.chat.ph": "메시지를 입력하세요…", "ws.chat.send": "전송",
     "ws.chat.loading": "메시지를 불러오는 중…", "ws.chat.empty": "아직 메시지가 없습니다. 대화를 시작해 보세요.",
+    "ws.chat.older": "이전 메시지 불러오기", "ws.chat.loadingOlder": "이전 메시지를 불러오는 중…",
     "ws.chat.loadError": "메시지를 불러오지 못했습니다.", "ws.chat.sendError": "메시지 전송에 실패했습니다.",
     "ws.event.ph": "일정 제목", "ws.event.add": "추가",
     "ws.event.empty": "등록된 일정이 없습니다.", "ws.event.loadError": "캘린더를 불러오지 못했습니다.",
@@ -496,6 +498,7 @@ const preqAnswerNo     = document.getElementById("preqAnswerNo");
 const chatForm       = document.getElementById("chatForm");
 const chatInput      = document.getElementById("chatInput");
 const chatLog        = document.getElementById("chatLog");
+const chatLoadOlder  = document.getElementById("chatLoadOlder");
 const roleFilter     = document.getElementById("roleFilter");
 const regionFilter   = document.getElementById("regionFilter");
 const globalMapSummary = document.getElementById("globalMapSummary");
@@ -2239,6 +2242,11 @@ function statusBadgeHtml(closingDate) {
 const workspaceProfileNames = new Map();
 const seenChatMessageIds = new Set();
 let workspaceOverviewRpcAvailable = null;
+const CHAT_PAGE_SIZE = 50;
+let workspaceChatPageRpcAvailable = null;
+let chatOldestCursor = null;
+let chatHasOlder = false;
+let chatPageLoading = false;
 
 function fallbackMemberName(userId) {
   if (userId === currentUser?.id) {
@@ -2342,7 +2350,7 @@ async function loadWorkspaceOverview(projectId) {
   renderWorkspaceOverview({ targetCount, members });
 }
 
-function appendChatMessage({ id, senderId, message, displayName }) {
+function createChatMessageElement({ id, senderId, message, displayName }) {
   if (id && seenChatMessageIds.has(id)) return;
   if (id) seenChatMessageIds.add(id);
 
@@ -2356,8 +2364,15 @@ function appendChatMessage({ id, senderId, message, displayName }) {
   const body = document.createElement("p");
   body.textContent = message;
   div.append(author, body);
+  return div;
+}
+
+function appendChatMessage(record) {
+  const nearBottom = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 80;
+  const div = createChatMessageElement(record);
+  if (!div) return;
   chatLog.appendChild(div);
-  chatLog.scrollTop = chatLog.scrollHeight;
+  if (nearBottom || record.senderId === currentUser?.id) chatLog.scrollTop = chatLog.scrollHeight;
 }
 
 async function appendChatRecord(record) {
@@ -2386,32 +2401,130 @@ function subscribeChatChannel(projectId) {
     });
 }
 
-async function loadWorkspaceChat(projectId) {
-  chatLog.innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.chat.loading"))}</p>`;
-  seenChatMessageIds.clear();
-  const { data, error } = await sbClient
+function setChatLogState(key) {
+  chatLog.querySelectorAll(".chat-msg, .ws-panel-state").forEach(node => node.remove());
+  chatLoadOlder.hidden = true;
+  const stateEl = document.createElement("p");
+  stateEl.className = "ws-panel-state";
+  stateEl.textContent = t(key);
+  chatLog.appendChild(stateEl);
+}
+
+function updateChatLoadOlderControl() {
+  chatLoadOlder.hidden = !chatHasOlder;
+  chatLoadOlder.disabled = chatPageLoading;
+  chatLoadOlder.textContent = t(chatPageLoading ? "ws.chat.loadingOlder" : "ws.chat.older");
+}
+
+function isMissingChatPageRpc(error) {
+  return error?.code === "PGRST202" || error?.code === "42883"
+    || (/get_workspace_chat_page/i.test(error?.message || "") && /not find|does not exist/i.test(error?.message || ""));
+}
+
+async function fetchWorkspaceChatPage(projectId, cursor = null) {
+  if (workspaceChatPageRpcAvailable !== false) {
+    const { data, error } = await sbClient.rpc("get_workspace_chat_page", {
+      p_project_id: projectId,
+      p_before_created_at: cursor?.createdAt || null,
+      p_before_id: cursor?.id || null,
+      p_page_size: CHAT_PAGE_SIZE
+    });
+    if (!error) {
+      workspaceChatPageRpcAvailable = true;
+      return data || [];
+    }
+    if (!isMissingChatPageRpc(error)) throw error;
+    workspaceChatPageRpcAvailable = false;
+  }
+
+  let query = sbClient
     .from("chat_messages")
     .select("id, sender_id, message, created_at")
     .eq("project_id", projectId)
-    .order("created_at", { ascending: true })
-    .limit(100);
-  if (error) {
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(CHAT_PAGE_SIZE + 1);
+  if (cursor) {
+    query = query.or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
+async function renderChatRecords(records, { prepend = false } = {}) {
+  if (!records.length) return;
+  await loadProfileNames(records.map(record => record.sender_id));
+  const fragment = document.createDocumentFragment();
+  records.forEach(record => {
+    const node = createChatMessageElement({
+      id: record.id,
+      senderId: record.sender_id,
+      message: record.message,
+      displayName: workspaceProfileNames.get(record.sender_id)
+    });
+    if (node) fragment.appendChild(node);
+  });
+  if (prepend) {
+    const firstMessage = chatLog.querySelector(".chat-msg");
+    chatLog.insertBefore(fragment, firstMessage || null);
+  } else {
+    chatLog.appendChild(fragment);
+  }
+}
+
+async function loadOlderWorkspaceChat() {
+  if (!activeProjectId || !chatHasOlder || chatPageLoading) return;
+  const projectId = activeProjectId;
+  const previousHeight = chatLog.scrollHeight;
+  const previousTop = chatLog.scrollTop;
+  chatPageLoading = true;
+  updateChatLoadOlderControl();
+  try {
+    const page = await fetchWorkspaceChatPage(projectId, chatOldestCursor);
+    if (activeProjectId !== projectId) return;
+    const records = page.slice(0, CHAT_PAGE_SIZE).reverse();
+    await renderChatRecords(records, { prepend: true });
+    if (records.length) {
+      chatOldestCursor = { id: records[0].id, createdAt: records[0].created_at };
+      chatLog.scrollTop = previousTop + (chatLog.scrollHeight - previousHeight);
+    }
+    chatHasOlder = page.length > CHAT_PAGE_SIZE;
+  } catch (error) {
+    console.error("[chat] older history fetch failed:", error.message);
+    showToast(t("ws.chat.loadError"));
+  } finally {
+    chatPageLoading = false;
+    updateChatLoadOlderControl();
+  }
+}
+
+async function loadWorkspaceChat(projectId) {
+  setChatLogState("ws.chat.loading");
+  seenChatMessageIds.clear();
+  chatOldestCursor = null;
+  chatHasOlder = false;
+  chatPageLoading = true;
+  try {
+    const page = await fetchWorkspaceChatPage(projectId);
+    if (activeProjectId !== projectId) return;
+    const records = page.slice(0, CHAT_PAGE_SIZE).reverse();
+    chatLog.querySelectorAll(".chat-msg, .ws-panel-state").forEach(node => node.remove());
+    if (!records.length) {
+      setChatLogState("ws.chat.empty");
+      return;
+    }
+    await renderChatRecords(records);
+    chatOldestCursor = { id: records[0].id, createdAt: records[0].created_at };
+    chatHasOlder = page.length > CHAT_PAGE_SIZE;
+    chatLog.scrollTop = chatLog.scrollHeight;
+  } catch (error) {
     console.error("[chat] history fetch failed:", error.message);
-    chatLog.innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.chat.loadError"))}</p>`;
-    return;
+    setChatLogState("ws.chat.loadError");
+  } finally {
+    chatPageLoading = false;
+    updateChatLoadOlderControl();
   }
-  if (!data?.length) {
-    chatLog.innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.chat.empty"))}</p>`;
-    return;
-  }
-  chatLog.innerHTML = "";
-  await loadProfileNames(data.map(message => message.sender_id));
-  data.forEach(message => appendChatMessage({
-    id: message.id,
-    senderId: message.sender_id,
-    message: message.message,
-    displayName: workspaceProfileNames.get(message.sender_id)
-  }));
 }
 
 function formatEventDate(value) {
@@ -2515,6 +2628,11 @@ document.getElementById("wsBackBtn").addEventListener("click", () => {
 
 document.querySelectorAll(".ws-tab").forEach(tab => {
   tab.addEventListener("click", () => switchWsTab(tab.dataset.tab));
+});
+
+chatLoadOlder.addEventListener("click", loadOlderWorkspaceChat);
+chatLog.addEventListener("scroll", () => {
+  if (chatLog.scrollTop <= 32) loadOlderWorkspaceChat();
 });
 
 chatForm.addEventListener("submit", async event => {

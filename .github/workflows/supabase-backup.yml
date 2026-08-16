@@ -1,0 +1,72 @@
+name: Encrypted Supabase backup
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 03:00 Asia/Seoul
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+
+    steps:
+      - name: Validate backup secrets
+        shell: bash
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Missing required secret: SUPABASE_DB_URL"
+            exit 1
+          fi
+          if [ -z "$BACKUP_ENCRYPTION_PASSPHRASE" ]; then
+            echo "Missing required secret: BACKUP_ENCRYPTION_PASSPHRASE"
+            exit 1
+          fi
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          version: 2.101.0
+
+      - name: Create logical backup
+        shell: bash
+        run: |
+          mkdir backup
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --data-only --use-copy
+
+      - name: Encrypt and verify backup
+        shell: bash
+        run: |
+          backup_name="infilm-supabase-$(date -u +%Y%m%dT%H%M%SZ).tar.gz.enc"
+          tar -czf - -C backup roles.sql schema.sql data.sql \
+            | openssl enc -aes-256-cbc -pbkdf2 -salt \
+                -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
+                -out "$backup_name"
+          openssl enc -d -aes-256-cbc -pbkdf2 \
+              -pass env:BACKUP_ENCRYPTION_PASSPHRASE \
+              -in "$backup_name" \
+            | tar -tzf -
+          sha256sum "$backup_name" > "$backup_name.sha256"
+
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: infilm-supabase-backup-${{ github.run_id }}
+          path: |
+            infilm-supabase-*.tar.gz.enc
+            infilm-supabase-*.tar.gz.enc.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
