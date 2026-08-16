@@ -126,7 +126,7 @@
       .insert({
         project_id:    projectId,
         question_text: MOCK.preq.text,
-        target_answer: MOCK.preq.required === "none" ? null : MOCK.preq.required,
+        target_answer: MOCK.preq.required === "none" ? null : MOCK.preq.required === "yes",
         is_active:     true
       });
 

@@ -3,6 +3,8 @@ const SUPABASE_URL = "https://fexwivtwuxsrjfrkqgam.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8JpAW0UnLFAGErcJw26Zig_5_30AJ1a";
 const INTERNAL_API_BASE = "https://cinetmi.onrender.com";
 
+const { normalizeRequiredAnswer, evaluatePreQuestion } = window.InFilmPreQuestion;
+
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession:   true,
@@ -145,6 +147,13 @@ const i18n = {
     "preq.answer.title": "Pre-screening question",
     "preq.answer.autojoin": "You are automatically approved.",
     "preq.answer.waiting": "Your application is pending manual review.",
+    "preq.answer.cancelled": "Application cancelled.",
+    "preq.answer.loadError": "Unable to verify the pre-screening question. Please try again.",
+    "preq.answer.saveError": "Unable to save your application. Please try again.",
+    "preq.answer.rejected": "Your answer does not match the project requirements. You cannot apply again.",
+    "preq.answer.approved": "You have successfully joined the project!",
+    "preq.answer.alreadyRejected": "You cannot reapply because your previous answer did not meet the requirements.",
+    "preq.answer.alreadyApplied": "You have already applied to this project.",
     "preq.done": "Done",
     "create.submit": "Publish project",
     "project.label": "PROJECTS",
@@ -320,6 +329,13 @@ const i18n = {
     "preq.answer.title": "사전 질문",
     "preq.answer.autojoin": "자동으로 참여 승인되었습니다.",
     "preq.answer.waiting": "관리자 수동 승인 대기 중입니다.",
+    "preq.answer.cancelled": "지원을 취소했습니다.",
+    "preq.answer.loadError": "사전 질문을 확인하지 못했습니다. 다시 시도해 주세요.",
+    "preq.answer.saveError": "지원 결과를 저장하지 못했습니다. 다시 시도해 주세요.",
+    "preq.answer.rejected": "프로젝트 성격과 맞지 않아 지원할 수 없습니다. 이 프로젝트에는 다시 지원할 수 없습니다.",
+    "preq.answer.approved": "프로젝트에 참여하게 되었습니다!",
+    "preq.answer.alreadyRejected": "이전 답변이 지원 조건과 맞지 않아 다시 지원할 수 없습니다.",
+    "preq.answer.alreadyApplied": "이미 참여 이력이 있는 프로젝트입니다.",
     "preq.done": "완료",
     "create.submit": "프로젝트 공고",
     "project.label": "프로젝트",
@@ -1581,7 +1597,7 @@ async function createProject(formData) {
         project_id:    projectId,
         question_text: formData.preq.text,
         // "none" means accept all — store null so no filter is applied
-        target_answer: formData.preq.required === "none" ? null : formData.preq.required,
+        target_answer: formData.preq.required === "none" ? null : formData.preq.required === "yes",
         is_active:     true
       });
     if (preqError) throw preqError;
@@ -2332,14 +2348,17 @@ document.getElementById("joinedList").addEventListener("click", event => {
     confirmBody.textContent  = t("confirm.cancel.body");
     confirmAction = async () => {
       if (currentUser && cancelProjectId) {
-        const { error } = await sbClient.from("project_participants")
-          .delete()
-          .eq("project_id", cancelProjectId)
-          .eq("user_id", currentUser.id);
-        if (error) console.error("[cancel-join]", error.message);
+        try {
+          await cancelProjectParticipation(cancelProjectId, currentUser.id);
+        } catch (error) {
+          console.error("[cancel-join]", error.message);
+          showToast(lang === "ko" ? "참여 취소에 실패했습니다." : "Failed to cancel participation.");
+          return;
+        }
       }
       card.remove();
       pushNotification(t("notif.participation.cancelled"));
+      await loadDiscoverProjects();
     };
     confirmDialog.showModal();
   }
@@ -2347,131 +2366,230 @@ document.getElementById("joinedList").addEventListener("click", event => {
 
 /* ── PRE-QUESTION LOGIC ─────────────────────────────────────── */
 
+let participationDecisionRpcAvailable = null;
+let cancelParticipationRpcAvailable = null;
+
+function isMissingDecisionRpc(error) {
+  return error?.code === "PGRST202" || error?.code === "42883"
+    || /answer_project_question/i.test(error?.message || "") && /not find|does not exist/i.test(error?.message || "");
+}
+
+function isMissingCancelRpc(error) {
+  return error?.code === "PGRST202" || error?.code === "42883"
+    || /cancel_project_participation/i.test(error?.message || "") && /not find|does not exist/i.test(error?.message || "");
+}
+
+async function cancelProjectParticipation(projId, userId) {
+  if (cancelParticipationRpcAvailable !== false) {
+    const { error } = await sbClient.rpc("cancel_project_participation", {
+      p_project_id: projId
+    });
+    if (!error) {
+      cancelParticipationRpcAvailable = true;
+      return;
+    }
+    if (!isMissingCancelRpc(error)) throw error;
+    cancelParticipationRpcAvailable = false;
+    console.warn("[cancel-join] cancel_project_participation RPC is not installed; using client fallback.");
+  }
+
+  const { error } = await sbClient.from("project_participants")
+    .delete()
+    .eq("project_id", projId)
+    .eq("user_id", userId)
+    .or("status.neq.rejected,status.is.null");
+  if (error) throw error;
+}
+
+async function readExistingParticipation(projId, userId) {
+  const { data, error } = await sbClient
+    .from("project_participants")
+    .select("id, status")
+    .eq("project_id", projId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+async function saveParticipationDecision({ projId, userId, roleName, answer, accepted }) {
+  if (participationDecisionRpcAvailable !== false) {
+    const { data, error } = await sbClient.rpc("answer_project_question", {
+      p_project_id: projId,
+      p_role_name: roleName || null,
+      p_answer: answer
+    });
+
+    if (!error) {
+      participationDecisionRpcAvailable = true;
+      const result = Array.isArray(data) ? data[0] : data;
+      const status = typeof result === "string" ? result : result?.status;
+      if (status !== "confirmed" && status !== "rejected") {
+        throw new Error("Invalid participation status returned by answer_project_question.");
+      }
+      return { status, existing: result?.created === false };
+    }
+
+    if (!isMissingDecisionRpc(error)) throw error;
+    participationDecisionRpcAvailable = false;
+    console.warn("[join] answer_project_question RPC is not installed; using guarded client fallback.");
+  }
+
+  const status = accepted ? "confirmed" : "rejected";
+  const payload = { project_id: projId, user_id: userId, status };
+  if (roleName) payload.role_name = roleName;
+
+  const { error } = await sbClient.from("project_participants").insert(payload);
+  if (!error) return { status, existing: false };
+
+  if (error.code === "23505") {
+    const existing = await readExistingParticipation(projId, userId);
+    if (existing?.status) return { status: existing.status, existing: true };
+  }
+  throw error;
+}
+
 async function joinProject(projId, roleName) {
   console.log("[join] joinProject called — projId:", projId, "| roleName:", roleName);
-  if (!projId) { console.warn("[join] No projId, aborting."); return; }
+  if (!projId) return;
 
   const { data: project, error: projectErr } = await sbClient
     .from("projects")
     .select("closing_date, creator_id")
     .eq("id", projId)
     .maybeSingle();
-  if (projectErr) console.error("[join] Project status fetch error:", projectErr.message);
+  if (projectErr) {
+    console.error("[join] Project status fetch error:", projectErr.message);
+    showToast(t("preq.answer.loadError"));
+    return;
+  }
   if (!project || getProjectStatus(project.closing_date) === "closed") {
     showToast(lang === "ko" ? "종료된 프로젝트입니다." : "This project has ended.");
     return;
   }
 
-  const { data: { session } } = await sbClient.auth.getSession();
+  const { data: { session }, error: sessionError } = await sbClient.auth.getSession();
+  if (sessionError) {
+    console.error("[join] Session fetch error:", sessionError.message);
+    showToast(t("preq.answer.loadError"));
+    return;
+  }
   if (!session?.user) {
-    console.log("[join] Not logged in — showing auth modal");
     authMode = "login"; updateAuthCopy(); authDialog.showModal();
     return;
   }
+
   const userId = session.user.id;
   if (project.creator_id === userId) {
     showToast(lang === "ko" ? "내가 만든 프로젝트는 워크스페이스에서 관리하세요." : "Manage your own project in Workspace.");
     return;
   }
-  console.log("[join] Auth OK — userId:", userId);
 
-  // Guard: check for any existing participation record
-  const { data: existing, error: existErr } = await sbClient
-    .from("project_participants")
-    .select("id, status")
-    .eq("project_id", projId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (existErr) console.error("[join] Existing-check error:", existErr.message);
-
-  if (existing) {
-    if (existing.status === "rejected") {
-      showToast(lang === "ko" ? "지원 조건에 맞지 않아 참여할 수 없습니다." : "You cannot apply due to the response.");
-    } else {
-      showToast(lang === "ko" ? "이미 참여 이력이 있는 프로젝트입니다." : "You have already applied to this project.");
-    }
+  let existing;
+  try {
+    existing = await readExistingParticipation(projId, userId);
+  } catch (error) {
+    console.error("[join] Existing-check error:", error.message);
+    showToast(t("preq.answer.loadError"));
     return;
   }
-  console.log("[join] No existing record — proceeding to pre-screening");
 
-  initiateJoin(
-    projId,
-    async () => {
-      console.log("[join] Criteria check: PASSED — inserting confirmed record");
-      const full = { project_id: projId, user_id: userId, status: "confirmed" };
-      if (roleName) full.role_name = roleName;
-      const { error } = await sbClient.from("project_participants").insert(full);
-      if (error) {
-        console.warn("[join] Primary insert failed (code:", error.code, "):", error.message);
-        if (error.code !== "23505") {
-          const { error: fe } = await sbClient.from("project_participants")
-            .insert({ project_id: projId, user_id: userId });
-          if (fe) console.error("[join] Fallback insert also failed:", fe.message);
-          else    console.log("[join] Fallback insert OK");
-        }
-      } else {
-        console.log("[join] Inserting to DB: SUCCESS");
-      }
-      showToast(lang === "ko" ? "프로젝트에 참여하게 되었습니다!" : "You have successfully joined the project!");
-      pushNotification(t("notif.participation.done"));
-      await loadMyPage();
-    },
-    async () => {
-      console.log("[join] Criteria check: FAILED — recording rejection");
-      const { error: re } = await sbClient.from("project_participants")
-        .insert({ project_id: projId, user_id: userId, status: "rejected" });
-      if (re) console.warn("[join] Rejection insert failed:", re.message);
-      showToast(lang === "ko" ? "아쉽게도 성격이 달라 참여하지 못했습니다." : "Sorry, you cannot join due to conflicting characteristics.");
-    }
-  );
+  if (existing) {
+    showToast(t(existing.status === "rejected"
+      ? "preq.answer.alreadyRejected"
+      : "preq.answer.alreadyApplied"));
+    return;
+  }
+
+  let decision;
+  try {
+    decision = await initiateJoin(projId);
+  } catch (error) {
+    console.error("[join] Pre-screening failed:", error.message);
+    showToast(t("preq.answer.loadError"));
+    return;
+  }
+
+  if (decision.cancelled) {
+    showToast(t("preq.answer.cancelled"));
+    return;
+  }
+
+  let saved;
+  try {
+    saved = await saveParticipationDecision({
+      projId,
+      userId,
+      roleName,
+      answer: decision.answer,
+      accepted: decision.accepted
+    });
+  } catch (error) {
+    console.error("[join] Participation save failed:", error.message);
+    showToast(t("preq.answer.saveError"));
+    return;
+  }
+
+  if (saved.status === "rejected") {
+    showToast(t(saved.existing ? "preq.answer.alreadyRejected" : "preq.answer.rejected"));
+  } else {
+    showToast(t(saved.existing ? "preq.answer.alreadyApplied" : "preq.answer.approved"));
+    if (!saved.existing) pushNotification(t("notif.participation.done"));
+  }
+
+  await Promise.all([loadMyPage(), loadDiscoverProjects()]);
 }
 
-async function initiateJoin(projId, onApproved, onWaiting) {
-  console.log("[join] Questionnaire triggered — fetching pre-screening question for projId:", projId);
+async function initiateJoin(projId) {
   const { data, error } = await sbClient
     .from("project_questions")
     .select("question_text, target_answer")
     .eq("project_id", projId)
     .eq("is_active", true)
     .maybeSingle();
-  if (error) console.error("[join] project_questions fetch error:", error.message);
-  if (!data || !data.question_text) {
-    console.log("[join] No pre-screening question found — auto-approving");
-    onApproved();
-    return;
+  if (error) throw error;
+
+  if (!data?.question_text) {
+    return { cancelled: false, accepted: true, answer: null, required: "none" };
   }
-  console.log("[join] Pre-screening question:", data.question_text, "| required answer:", data.target_answer);
+
+  const required = normalizeRequiredAnswer(data.target_answer);
   preqAnswerQ.textContent = data.question_text;
-  const required = data.target_answer || "none";
-  const cleanup = () => {
-    preqAnswerYes.onclick = null;
-    preqAnswerNo.onclick  = null;
+
+  return new Promise(resolve => {
     const closeBtn = document.getElementById("preqAnswerClose");
-    if (closeBtn) closeBtn.onclick = null;
-  };
-  preqAnswerYes.onclick = () => {
-    console.log("[join] User answered: YES | required:", required);
-    cleanup(); preqAnswerDialog.close();
-    (required === "none" || required === "yes") ? onApproved() : onWaiting();
-  };
-  preqAnswerNo.onclick = () => {
-    console.log("[join] User answered: NO | required:", required);
-    cleanup(); preqAnswerDialog.close();
-    if (required === "none" || required === "no") {
-      onApproved();
-    } else {
-      onWaiting();
-      showToast(lang === "ko" ? "지원 조건에 맞지 않아 참여할 수 없습니다." : "Your answer does not match the condition.");
-    }
-  };
-  const closeBtn = document.getElementById("preqAnswerClose");
-  if (closeBtn) closeBtn.onclick = () => {
-    console.log("[join] Pre-screening dialog dismissed by user");
-    cleanup(); preqAnswerDialog.close();
-    onWaiting();
-    showToast(lang === "ko" ? "지원 조건에 맞지 않아 참여할 수 없습니다." : "Your answer does not match the condition.");
-  };
-  preqAnswerDialog.showModal();
+    let settled = false;
+
+    const cleanup = () => {
+      preqAnswerYes.onclick = null;
+      preqAnswerNo.onclick = null;
+      if (closeBtn) closeBtn.onclick = null;
+      preqAnswerDialog.removeEventListener("cancel", handleCancel);
+    };
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (preqAnswerDialog.open) preqAnswerDialog.close();
+      resolve(result);
+    };
+    const answer = value => finish({
+      cancelled: false,
+      accepted: evaluatePreQuestion(required, value),
+      answer: value,
+      required
+    });
+    const handleCancel = event => {
+      event.preventDefault();
+      finish({ cancelled: true, accepted: false, answer: null, required });
+    };
+
+    preqAnswerYes.onclick = () => answer(true);
+    preqAnswerNo.onclick = () => answer(false);
+    if (closeBtn) closeBtn.onclick = () => finish({ cancelled: true, accepted: false, answer: null, required });
+    preqAnswerDialog.addEventListener("cancel", handleCancel);
+    preqAnswerDialog.showModal();
+  });
 }
 
 function openPreqDialog() {

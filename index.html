@@ -237,14 +237,14 @@
           <div class="cf-control">
             <div class="preq-setup-row" id="preqSetupRow">
               <span class="preq-none" data-i18n="preq.none">No question set</span>
-              <button type="button" class="ghost-btn preq-set-btn" id="preqSetBtn" data-i18n="preq.set" onclick="openPreqDialog()">Set question</button>
+              <button type="button" class="ghost-btn preq-set-btn" id="preqSetBtn" data-i18n="preq.set">Set question</button>
             </div>
             <div class="preq-preview hidden" id="preqPreview">
               <div class="preq-preview-inner">
                 <div class="preq-preview-q" id="preqPreviewQ"></div>
                 <div class="preq-preview-meta" id="preqPreviewMeta"></div>
               </div>
-              <button type="button" class="micro-btn" id="preqEditBtn" data-i18n="preq.change" onclick="openPreqDialog()">Edit</button>
+              <button type="button" class="micro-btn" id="preqEditBtn" data-i18n="preq.change">Edit</button>
             </div>
           </div>
         </div>
@@ -549,6 +549,7 @@
   </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="preq-logic.js" charset="utf-8"></script>
   <script src="app.js" charset="utf-8"></script>
 </body>
 </html>

@@ -6,7 +6,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check:i18n": "node check_i18n.js"
+    "check:i18n": "node check_i18n.js",
+    "test:preq": "node test_preq_logic.js",
+    "test": "npm run check:i18n && npm run test:preq"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
