@@ -262,7 +262,8 @@ const i18n = {
     "profile.tooltip.title": "Verified film profile", "profile.tooltip.experience": "Experience",
     "profile.tooltip.roles": "Roles", "profile.tooltip.major": "Background",
     "profile.tooltip.equipment": "Equipment", "profile.tooltip.style": "Style",
-    "profile.tooltip.bio": "Intro", "profile.tooltip.none": "Not listed"
+    "profile.tooltip.bio": "Intro", "profile.tooltip.none": "Not listed",
+    "auth.sessionExpired": "Your saved session expired. Please log in again."
   },
   ko: {
     "nav.discover": "탐색", "nav.plans": "플랜", "nav.create": "만들기",
@@ -479,7 +480,8 @@ const i18n = {
     "profile.tooltip.title": "인증된 영화 프로필", "profile.tooltip.experience": "경험",
     "profile.tooltip.roles": "역할", "profile.tooltip.major": "배경",
     "profile.tooltip.equipment": "장비/툴", "profile.tooltip.style": "스타일",
-    "profile.tooltip.bio": "소개", "profile.tooltip.none": "미기재"
+    "profile.tooltip.bio": "소개", "profile.tooltip.none": "미기재",
+    "auth.sessionExpired": "저장된 로그인 세션이 만료되었습니다. 다시 로그인해 주세요."
   }
 };
 
@@ -578,6 +580,7 @@ let tasteSearchDebounceTimer = null;
 let tasteSearchRequestSeq = 0;
 let currentProfileSurvey = null;
 let hostProfileCache = new Map();
+let authSessionSyncId = 0;
 
 const REGION_CITY_LOOKUP = Object.freeze({
   seoul:      { labels: { ko: "서울", en: "Seoul" } },
@@ -3430,16 +3433,55 @@ if (closingDateInput) {
 /* ── INIT ─────────────────────────────────────────────────── */
 applyLang("ko");  // also calls loadDiscoverProjects()
 
-// Restore session on page load and keep state in sync on every auth event.
+function activateAuthenticatedSession(user) {
+  if (!user) return;
+  if (currentUser?.id !== user.id) currentProfileSurvey = null;
+  state.authed = true;
+  currentUser = user;
+  renderIdentity();
+  refreshOwnProfileSurvey();
+  loadDiscoverProjects();
+}
+
+async function validateInitialSession(session) {
+  const syncId = ++authSessionSyncId;
+  let user = null;
+
+  const { data: userData, error: userError } = await sbClient.auth.getUser();
+  if (!userError && userData?.user) {
+    user = userData.user;
+  } else {
+    const { data: refreshed, error: refreshError } = await sbClient.auth.refreshSession();
+    if (!refreshError && refreshed?.user) user = refreshed.user;
+  }
+
+  if (syncId !== authSessionSyncId) return;
+  if (user) {
+    activateAuthenticatedSession(user);
+    return;
+  }
+
+  console.warn("[auth] Stored session validation failed; returning to anonymous discovery.");
+  clearUserState();
+  await sbClient.auth.signOut({ scope: "local" }).catch(() => {});
+  showToast(t("auth.sessionExpired"));
+  loadDiscoverProjects();
+}
+
+// Restore only server-validated sessions; a cached JWT alone must never make
+// authenticated queries or hide public discovery results.
 sbClient.auth.onAuthStateChange((event, session) => {
-  if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
-    if (currentUser?.id !== session.user.id) currentProfileSurvey = null;
-    state.authed = true;
-    currentUser  = session.user;
-    renderIdentity();
-    refreshOwnProfileSurvey();
-    loadDiscoverProjects();
+  if (event === "INITIAL_SESSION") {
+    if (session) {
+      setTimeout(() => validateInitialSession(session), 0);
+    } else {
+      clearUserState();
+    }
+  } else if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
+    authSessionSyncId += 1;
+    activateAuthenticatedSession(session.user);
   } else if (event === "SIGNED_OUT") {
+    authSessionSyncId += 1;
     clearUserState();
   }
 });
