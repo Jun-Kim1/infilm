@@ -21,13 +21,18 @@ or encryption passphrase.
 
 Add these repository secrets before enabling the first backup:
 
-1. `SUPABASE_DB_URL`: the direct or session-pooler Postgres connection string.
+1. `SUPABASE_DB_PASSWORD`: the raw Supabase database password. The workflow URL
+   encodes it and constructs the fixed session-pooler connection string without
+   printing the value.
 2. `BACKUP_ENCRYPTION_PASSPHRASE`: a unique high-entropy passphrase. Generate one
    locally with `openssl rand -base64 48` and store a recovery copy in a password
    manager outside GitHub.
 
 After adding both secrets, run **Encrypted Supabase backup** manually once and
 confirm that the encrypted artifact is present and the workflow is green.
+
+An older `SUPABASE_DB_URL` secret is not used and can be removed after the first
+successful backup.
 
 ## Restore drill
 

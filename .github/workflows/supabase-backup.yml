@@ -17,21 +17,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
 
     steps:
       - name: Validate backup secrets
         shell: bash
         run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "Missing required secret: SUPABASE_DB_URL"
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "Missing required secret: SUPABASE_DB_PASSWORD"
             exit 1
           fi
           if [ -z "$BACKUP_ENCRYPTION_PASSPHRASE" ]; then
             echo "Missing required secret: BACKUP_ENCRYPTION_PASSPHRASE"
             exit 1
           fi
+
+      - name: Build masked database URL
+        shell: bash
+        run: |
+          encoded_password="$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')"
+          db_url="postgresql://postgres.fexwivtwuxsrjfrkqgam:${encoded_password}@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres"
+          echo "::add-mask::$encoded_password"
+          echo "::add-mask::$db_url"
+          echo "SUPABASE_DB_URL=$db_url" >> "$GITHUB_ENV"
 
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v3
