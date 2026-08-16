@@ -1,0 +1,76 @@
+name: Apply profile survey migration
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-schema-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Validate database secret
+        shell: bash
+        run: |
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "Missing required secret: SUPABASE_DB_PASSWORD"
+            exit 1
+          fi
+
+      - name: Build masked database URL
+        shell: bash
+        run: |
+          encoded_password="$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')"
+          db_url="postgresql://postgres.fexwivtwuxsrjfrkqgam:${encoded_password}@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres"
+          echo "::add-mask::$encoded_password"
+          echo "::add-mask::$db_url"
+          echo "SUPABASE_DB_URL=$db_url" >> "$GITHUB_ENV"
+
+      - name: Ensure PostgreSQL client
+        shell: bash
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes postgresql-client
+          fi
+          psql --version
+
+      - name: Apply migration atomically
+        shell: bash
+        run: |
+          psql "$SUPABASE_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --single-transaction \
+            --file supabase/migrations/20260816_profile_survey.sql
+
+      - name: Verify profile survey database objects
+        shell: bash
+        run: |
+          column_count="$(psql "$SUPABASE_DB_URL" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+            select count(*)
+            from information_schema.columns
+            where table_schema = 'public'
+              and table_name = 'profiles'
+              and column_name in (
+                'is_profile_verified', 'experience_count', 'roles',
+                'major_background', 'equipments', 'collaboration_style',
+                'bio', 'verified_at'
+              );
+          ")"
+          if [ "$column_count" != "8" ]; then
+            echo "Profile survey schema verification failed"
+            exit 1
+          fi
+          echo "Profile survey schema verified"

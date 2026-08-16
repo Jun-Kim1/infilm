@@ -37,6 +37,13 @@
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
         <span class="notify-dot" id="notifyDot"></span>
       </button>
+      <button class="profile-survey-entry hidden" id="profileSurveyBtn" type="button" aria-label="Profile verification">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="5"/>
+          <path d="m8 12 2.6 2.6L16.5 9"/>
+        </svg>
+        <span id="profileSurveyBtnText">프로필 인증</span>
+      </button>
       <button class="cta-btn" id="authBtn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
         <span id="authBtnText" data-i18n="auth.login">Log in</span>
@@ -263,6 +270,7 @@
         </div>
       </div>
       <h2 class="display-title" data-i18n="mypage.title">Your projects</h2>
+      <div class="mypage-profile-summary" id="mypageProfileSummary"></div>
 
       <div class="mypage-grid">
         <div class="list-block">
@@ -439,6 +447,74 @@
     </form>
   </dialog>
 
+  <!-- ─── PROFILE VERIFICATION SURVEY ─────────────────────── -->
+  <dialog id="profileSurveyDialog" class="modal profile-survey-modal">
+    <form id="profileSurveyForm" novalidate>
+      <div class="profile-survey-head">
+        <div>
+          <span class="profile-survey-kicker" id="profileSurveyKicker">PROFILE CHECK</span>
+          <h3 id="profileSurveyTitle">프로필 인증</h3>
+          <p id="profileSurveyIntro">개인정보 없이 영화 협업 경험과 방식을 알려주세요.</p>
+        </div>
+        <button type="button" class="modal-x-btn profile-survey-close" id="profileSurveyClose" aria-label="Close">✕</button>
+      </div>
+
+      <div class="profile-survey-scroll">
+        <fieldset class="survey-field" data-survey-field="experience_count">
+          <legend><span>01</span><strong id="surveyExperienceLabel">제작 경험</strong><em id="surveyRequired1">필수</em></legend>
+          <div class="survey-chips" id="surveyExperienceOptions"></div>
+          <p class="survey-error" id="surveyExperienceError"></p>
+        </fieldset>
+
+        <fieldset class="survey-field" data-survey-field="roles">
+          <legend><span>02</span><strong id="surveyRolesLabel">주요 역할</strong><em id="surveyRequired2">필수 · 복수 선택</em></legend>
+          <div class="survey-chips" id="surveyRoleOptions"></div>
+          <p class="survey-error" id="surveyRolesError"></p>
+        </fieldset>
+
+        <fieldset class="survey-field" data-survey-field="major_background">
+          <legend><span>03</span><strong id="surveyMajorLabel">전공/배경</strong><em id="surveyRequired3">필수</em></legend>
+          <div class="survey-chips" id="surveyMajorOptions"></div>
+          <p class="survey-error" id="surveyMajorError"></p>
+        </fieldset>
+
+        <fieldset class="survey-field" data-survey-field="equipments">
+          <legend><span>04</span><strong id="surveyEquipmentLabel">보유 장비/툴</strong><em id="surveyOptional">선택 · 복수 선택</em></legend>
+          <div class="survey-chips" id="surveyEquipmentOptions"></div>
+          <p class="survey-error" id="surveyEquipmentError"></p>
+        </fieldset>
+
+        <fieldset class="survey-field" data-survey-field="collaboration_style">
+          <legend><span>05</span><strong id="surveyStyleLabel">협업 스타일</strong><em id="surveyRequired4">필수</em></legend>
+          <div class="survey-chips survey-chips--wide" id="surveyStyleOptions"></div>
+          <p class="survey-error" id="surveyStyleError"></p>
+        </fieldset>
+
+        <fieldset class="survey-field" data-survey-field="bio">
+          <legend><span>06</span><strong id="surveyBioLabel">한 줄 소개</strong><em id="surveyRequired5">필수</em></legend>
+          <textarea id="surveyBio" rows="2" maxlength="240" placeholder="함께 만들고 싶은 영화와 각오를 적어주세요."></textarea>
+          <div class="survey-bio-meta"><p class="survey-error" id="surveyBioError"></p><span><b id="surveyBioCount">0</b>/240</span></div>
+        </fieldset>
+      </div>
+
+      <p class="auth-message survey-submit-message" id="profileSurveyMessage" aria-live="polite"></p>
+      <div class="modal-actions profile-survey-actions">
+        <button type="button" class="ghost-btn" id="profileSurveyCancel">나중에</button>
+        <button type="submit" class="cta-btn" id="profileSurveySubmit">인증 뱃지 받기</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="profileSurveySuccessDialog" class="modal profile-survey-success">
+    <div class="profile-survey-success-inner">
+      <span class="verified-success-icon" aria-hidden="true">✓</span>
+      <span class="profile-survey-kicker">PROFILE VERIFIED</span>
+      <h3 id="profileSurveySuccessTitle">인증 뱃지 획득!</h3>
+      <p id="profileSurveySuccessCopy">이제 프로젝트에서 신뢰할 수 있는 호스트로 표시됩니다.</p>
+      <button type="button" class="cta-btn" id="profileSurveySuccessClose">확인</button>
+    </div>
+  </dialog>
+
   <!-- ─── CONFIRM MODAL ─────────────────────────────────────── -->
   <dialog id="confirmDialog" class="modal">
     <form method="dialog">
@@ -537,6 +613,7 @@
     <!-- scrollable body -->
     <div class="pdm-body">
       <h2 class="pdm-title" id="modalDetailTitle"></h2>
+      <div class="pdm-host" id="modalDetailHost"></div>
       <div class="pdm-meta-row" id="modalDetailRegion"></div>
       <hr class="pdm-divider">
       <div id="modalDetailSlots"></div>
@@ -586,6 +663,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="preq-logic.js" charset="utf-8"></script>
+  <script src="profile-survey-logic.js" charset="utf-8"></script>
   <script src="app.js" charset="utf-8"></script>
 </body>
 </html>

@@ -4,6 +4,11 @@ const SUPABASE_ANON_KEY = "sb_publishable_8JpAW0UnLFAGErcJw26Zig_5_30AJ1a";
 const INTERNAL_API_BASE = "https://cinetmi.onrender.com";
 
 const { normalizeRequiredAnswer, evaluatePreQuestion } = window.InFilmPreQuestion;
+const {
+  OPTIONS: PROFILE_SURVEY_OPTIONS,
+  validateProfileSurvey,
+  optionLabel: profileOptionLabel
+} = window.InFilmProfileSurvey;
 
 const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -233,7 +238,29 @@ const i18n = {
     "notif.review": "Review submitted.",
     "notif.participation.cancelled": "Participation cancelled. Penalty payment queued.",
     "notif.participation.done": "Participation complete. Check My Page for active joins.",
-    "notif.plan.active": "%s plan is now active."
+    "notif.plan.active": "%s plan is now active.",
+    "profile.entry": "Verify profile", "profile.entry.verified": "Verified profile",
+    "profile.prompt": "Complete the film profile survey to build trust with your crew.",
+    "profile.kicker": "PROFILE CHECK", "profile.title": "Profile verification",
+    "profile.intro": "Share your filmmaking experience and collaboration style without personal information.",
+    "profile.experience": "Production experience", "profile.roles": "Primary roles",
+    "profile.major": "Major / background", "profile.equipment": "Equipment / tools",
+    "profile.style": "Collaboration style", "profile.bio": "Short introduction",
+    "profile.required": "Required", "profile.required.multi": "Required · Select multiple",
+    "profile.optional.multi": "Optional · Select multiple", "profile.later": "Later",
+    "profile.submit": "Get verified badge", "profile.saving": "Saving profile…",
+    "profile.bio.ph": "Tell crews what you want to create and how you work.",
+    "profile.error.required": "Please complete this question.",
+    "profile.error.equipment": "‘None’ cannot be selected with other equipment.",
+    "profile.error.save": "Could not save the survey. Please try again.",
+    "profile.error.migration": "Profile verification is not ready yet. Apply the Supabase migration first.",
+    "profile.success.title": "Verified badge earned!",
+    "profile.success.copy": "Your projects now show you as a trusted host.",
+    "profile.success.ok": "Done", "profile.host.verified": "Verified profile host",
+    "profile.tooltip.title": "Verified film profile", "profile.tooltip.experience": "Experience",
+    "profile.tooltip.roles": "Roles", "profile.tooltip.major": "Background",
+    "profile.tooltip.equipment": "Equipment", "profile.tooltip.style": "Style",
+    "profile.tooltip.bio": "Intro", "profile.tooltip.none": "Not listed"
   },
   ko: {
     "nav.discover": "탐색", "nav.plans": "플랜", "nav.create": "만들기",
@@ -426,7 +453,29 @@ const i18n = {
     "notif.review": "리뷰가 제출되었습니다.",
     "notif.participation.cancelled": "참여가 취소되었습니다. 패널티 결제가 예약되었습니다.",
     "notif.participation.done": "참여가 완료되었습니다. 마이페이지에서 확인하세요.",
-    "notif.plan.active": "%s 플랜이 활성화되었습니다."
+    "notif.plan.active": "%s 플랜이 활성화되었습니다.",
+    "profile.entry": "프로필 인증", "profile.entry.verified": "인증된 프로필",
+    "profile.prompt": "영화 프로필 설문을 완료하고 구성원에게 신뢰를 보여주세요.",
+    "profile.kicker": "PROFILE CHECK", "profile.title": "프로필 인증",
+    "profile.intro": "개인정보 없이 영화 협업 경험과 방식을 알려주세요.",
+    "profile.experience": "제작 경험", "profile.roles": "주요 역할",
+    "profile.major": "전공/배경", "profile.equipment": "보유 장비/툴",
+    "profile.style": "협업 스타일", "profile.bio": "한 줄 소개",
+    "profile.required": "필수", "profile.required.multi": "필수 · 복수 선택",
+    "profile.optional.multi": "선택 · 복수 선택", "profile.later": "나중에",
+    "profile.submit": "인증 뱃지 받기", "profile.saving": "프로필 저장 중…",
+    "profile.bio.ph": "함께 만들고 싶은 영화와 각오를 적어주세요.",
+    "profile.error.required": "이 문항을 입력해 주세요.",
+    "profile.error.equipment": "‘없음’은 다른 장비와 함께 선택할 수 없습니다.",
+    "profile.error.save": "설문을 저장하지 못했습니다. 다시 시도해 주세요.",
+    "profile.error.migration": "프로필 인증 기능 준비가 필요합니다. Supabase 마이그레이션을 먼저 적용해 주세요.",
+    "profile.success.title": "인증 뱃지 획득!",
+    "profile.success.copy": "이제 프로젝트에서 신뢰할 수 있는 호스트로 표시됩니다.",
+    "profile.success.ok": "확인", "profile.host.verified": "인증된 프로필 호스트",
+    "profile.tooltip.title": "인증된 영화 프로필", "profile.tooltip.experience": "경험",
+    "profile.tooltip.roles": "역할", "profile.tooltip.major": "배경",
+    "profile.tooltip.equipment": "장비/툴", "profile.tooltip.style": "스타일",
+    "profile.tooltip.bio": "소개", "profile.tooltip.none": "미기재"
   }
 };
 
@@ -495,6 +544,12 @@ const preqAnswerDialog = document.getElementById("preqAnswerDialog");
 const preqAnswerQ      = document.getElementById("preqAnswerQ");
 const preqAnswerYes    = document.getElementById("preqAnswerYes");
 const preqAnswerNo     = document.getElementById("preqAnswerNo");
+const profileSurveyBtn = document.getElementById("profileSurveyBtn");
+const profileSurveyDialog = document.getElementById("profileSurveyDialog");
+const profileSurveyForm = document.getElementById("profileSurveyForm");
+const profileSurveyMessage = document.getElementById("profileSurveyMessage");
+const profileSurveySuccessDialog = document.getElementById("profileSurveySuccessDialog");
+const surveyBio = document.getElementById("surveyBio");
 const chatForm       = document.getElementById("chatForm");
 const chatInput      = document.getElementById("chatInput");
 const chatLog        = document.getElementById("chatLog");
@@ -517,6 +572,8 @@ let signupFlowState = "account";
 let selectedRegionCard = null;
 let tasteSearchDebounceTimer = null;
 let tasteSearchRequestSeq = 0;
+let currentProfileSurvey = null;
+let hostProfileCache = new Map();
 
 const REGION_CITY_LOOKUP = Object.freeze({
   seoul:      { labels: { ko: "서울", en: "Seoul" } },
@@ -572,6 +629,7 @@ function applyLang(l) {
     if (sel) csel.querySelector(".csel-label").textContent = sel.textContent;
   });
   updateTasteStep2Copy();
+  applyProfileSurveyCopy();
   loadRoleStats();
   loadDiscoverProjects();   // re-render cards with translated role/region labels
   if (activeProjectId && document.getElementById("workspace")?.classList.contains("active")) {
@@ -852,6 +910,8 @@ async function loadProjectDetail(projectId) {
       console.error("[join] Project fetch failed:", error?.message);
       return;
     }
+    await fetchProjectHostProfiles([projectId]);
+    const hostProfile = hostProfileCache.get(projectId);
     console.log("[join] Step 2: Project fetched →", proj.title);
 
     // ── Topbar: status (genre stays empty — no genre field in DB yet) ────
@@ -860,6 +920,11 @@ async function loadProjectDetail(projectId) {
 
     // ── Title ─────────────────────────────────────────────────────────────
     document.getElementById("modalDetailTitle").textContent = proj.title || "";
+    const hostEl = document.getElementById("modalDetailHost");
+    if (hostEl) {
+      const hostName = hostProfile?.display_name || (lang === "ko" ? "프로젝트 호스트" : "Project host");
+      hostEl.innerHTML = `<span class="pdm-host-name">${escapeHtml(hostName)}</span>${verifiedProfileBadgeHtml(hostProfile)}`;
+    }
 
     // ── Meta pills: region + role summary ─────────────────────────────────
     const regionNames = (proj.regions || [])
@@ -958,6 +1023,7 @@ function renderIdentity() {
 function clearUserState() {
   state.authed        = false;
   currentUser         = null;
+  currentProfileSurvey = null;
   state.notifications = [];
   // Clear My Page lists so previous user's data never bleeds through
   const createdEl = document.getElementById("createdList");
@@ -966,6 +1032,7 @@ function clearUserState() {
   if (createdEl) createdEl.innerHTML = empty;
   if (joinedEl)  joinedEl.innerHTML  = empty;
   renderIdentity();
+  renderProfileSurveyEntry();
   renderNotifications();
 }
 
@@ -1174,6 +1241,101 @@ window.addEventListener("resize", () => {
   if (window.innerWidth > 900) closeServiceSidebar();
 });
 
+profileSurveyBtn?.addEventListener("click", openProfileSurvey);
+document.getElementById("mypageProfileSummary")?.addEventListener("click", event => {
+  if (event.target.closest("[data-open-profile-survey]")) openProfileSurvey();
+});
+document.getElementById("profileSurveyClose")?.addEventListener("click", () => profileSurveyDialog?.close());
+document.getElementById("profileSurveyCancel")?.addEventListener("click", () => profileSurveyDialog?.close());
+document.getElementById("profileSurveySuccessClose")?.addEventListener("click", () => profileSurveySuccessDialog?.close());
+
+profileSurveyForm?.addEventListener("click", event => {
+  const button = event.target.closest(".survey-chip");
+  if (!button) return;
+  const fieldset = button.closest(".survey-field");
+  const fieldName = fieldset?.dataset.surveyField;
+  const group = PROFILE_SURVEY_GROUPS.find(item => item.field === fieldName);
+  if (!group) return;
+
+  const container = button.closest(".survey-chips");
+  const nextPressed = button.getAttribute("aria-pressed") !== "true";
+  if (!group.multiple) {
+    container.querySelectorAll(".survey-chip").forEach(chip => {
+      chip.setAttribute("aria-pressed", "false");
+      chip.classList.remove("is-selected");
+    });
+  }
+
+  if (fieldName === "equipments" && nextPressed) {
+    const noneValue = "없음 (몸만 참여)";
+    container.querySelectorAll(".survey-chip").forEach(chip => {
+      const shouldClear = button.dataset.value === noneValue
+        ? chip !== button
+        : chip.dataset.value === noneValue;
+      if (shouldClear) {
+        chip.setAttribute("aria-pressed", "false");
+        chip.classList.remove("is-selected");
+      }
+    });
+  }
+
+  const finalPressed = group.multiple ? nextPressed : true;
+  button.setAttribute("aria-pressed", String(finalPressed));
+  button.classList.toggle("is-selected", finalPressed);
+  fieldset.classList.remove("has-error");
+  fieldset.querySelector(".survey-error").textContent = "";
+});
+
+surveyBio?.addEventListener("input", () => {
+  const count = document.getElementById("surveyBioCount");
+  if (count) count.textContent = String(surveyBio.value.length);
+  const fieldset = surveyBio.closest(".survey-field");
+  fieldset?.classList.remove("has-error");
+  const error = fieldset?.querySelector(".survey-error");
+  if (error) error.textContent = "";
+});
+
+profileSurveyForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+  clearSurveyErrors();
+  const validation = validateProfileSurvey(getSelectedSurveyValues());
+  if (!validation.valid) {
+    showSurveyErrors(validation.errors);
+    return;
+  }
+
+  const submitButton = document.getElementById("profileSurveySubmit");
+  submitButton.disabled = true;
+  submitButton.textContent = t("profile.saving");
+  try {
+    const value = validation.value;
+    const { data, error } = await sbClient.rpc("save_profile_survey", {
+      p_experience_count: value.experience_count,
+      p_roles: value.roles,
+      p_major_background: value.major_background,
+      p_equipments: value.equipments,
+      p_collaboration_style: value.collaboration_style,
+      p_bio: value.bio
+    });
+    if (error) throw error;
+
+    currentProfileSurvey = data;
+    hostProfileCache = new Map();
+    renderProfileSurveyEntry();
+    profileSurveyDialog.close();
+    profileSurveySuccessDialog?.showModal();
+    await loadDiscoverProjects();
+  } catch (error) {
+    console.error("[profile-survey] save failed:", error);
+    const missingRpc = error?.code === "PGRST202" || /save_profile_survey/i.test(error?.message || "");
+    profileSurveyMessage.textContent = t(missingRpc ? "profile.error.migration" : "profile.error.save");
+    profileSurveyMessage.classList.add("auth-message--error");
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = t("profile.submit");
+  }
+});
+
 authBtn.addEventListener("click", async () => {
   if (state.authed) {
     const msg = t("notif.logout");
@@ -1239,6 +1401,7 @@ authForm.addEventListener("submit", async event => {
   state.authed = true;
   currentUser = result.user;
   renderIdentity();
+  await refreshOwnProfileSurvey();
   pushNotification(t(authMode === "signup" ? "notif.signup" : "notif.login"));
   await loadDiscoverProjects();
 
@@ -1368,6 +1531,7 @@ tasteSubmitBtn?.addEventListener("click", async () => {
   state.authed = true;
   currentUser = signupResult?.user || null;
   renderIdentity();
+  await refreshOwnProfileSurvey();
   pushNotification(t("notif.signup"));
   if (cineError) {
     showToast(t("taste.partial"));
@@ -2099,6 +2263,9 @@ async function loadDiscoverProjects() {
 
     if (loadId !== discoverProjectsLoadId) return;
 
+    await fetchProjectHostProfiles(canonicalProjects.map(project => project.id));
+    if (loadId !== discoverProjectsLoadId) return;
+
     const openCount = canonicalProjects.filter(p => getProjectStatus(p.closing_date) === "open").length;
     document.getElementById("openCount").textContent =
       lang === "ko" ? `${openCount}개 모집 중` : `${openCount} open`;
@@ -2130,6 +2297,8 @@ async function loadDiscoverProjects() {
       const dataRole      = roles[0]?.role_name || "all";
       const isClosed      = getProjectStatus(proj.closing_date) === "closed";
       const isOwner       = currentUser?.id && proj.creator_id === currentUser.id;
+      const hostProfile   = hostProfileCache.get(proj.id);
+      const hostVerified  = Boolean(hostProfile?.is_profile_verified);
       const participation = participantMap.get(proj.id);
       const isRejected    = participation === "rejected";
       const isConfirmed   = participation === "confirmed" || participation == null;
@@ -2158,7 +2327,7 @@ async function loadDiscoverProjects() {
       }
 
       const card = document.createElement("article");
-      card.className = "project-card";
+      card.className = `project-card${hostVerified ? " project-card--verified" : ""}`;
       card.dataset.role      = dataRole;
       card.dataset.region    = isNation ? "nationwide" : primaryRegion;
       card.dataset.projectId = proj.id;
@@ -2172,6 +2341,7 @@ async function loadDiscoverProjects() {
           ${statusBadgeHtml(proj.closing_date)}
         </div>
         <h3 class="card-title">${escapeHtml(proj.title)}</h3>
+        ${hostVerified ? `<div class="card-host-row"><span class="pdm-host-name">${escapeHtml(hostProfile.display_name || (lang === "ko" ? "프로젝트 호스트" : "Project host"))}</span>${verifiedProfileBadgeHtml(hostProfile)}</div>` : ""}
         <div class="card-meta">
           <span>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -2194,21 +2364,6 @@ async function loadDiscoverProjects() {
     applyFilters();
   }
 }
-
-/* ── INIT ─────────────────────────────────────────────────── */
-applyLang("ko");  // also calls loadDiscoverProjects()
-
-// Restore session on page load and keep state in sync on every auth event
-sbClient.auth.onAuthStateChange((event, session) => {
-  if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
-    state.authed = true;
-    currentUser  = session.user;
-    renderIdentity();
-    loadDiscoverProjects();
-  } else if (event === "SIGNED_OUT") {
-    clearUserState();
-  }
-});
 
 /* ── WORKSPACE ───────────────────────────────────────────────────────── */
 /* ── CHAT HELPERS ─────────────────────────────────────────── */
@@ -2253,6 +2408,211 @@ function fallbackMemberName(userId) {
     return currentUser.user_metadata?.display_name || currentUser.email?.split("@")[0] || "Me";
   }
   return `${lang === "ko" ? "구성원" : "Crew"} ${String(userId || "").slice(0, 6)}`.trim();
+}
+
+/* ── PROFILE VERIFICATION ────────────────────────────────── */
+const PROFILE_SURVEY_GROUPS = Object.freeze([
+  { field: "experience_count", target: "surveyExperienceOptions", multiple: false },
+  { field: "roles", target: "surveyRoleOptions", multiple: true },
+  { field: "major_background", target: "surveyMajorOptions", multiple: false },
+  { field: "equipments", target: "surveyEquipmentOptions", multiple: true },
+  { field: "collaboration_style", target: "surveyStyleOptions", multiple: false }
+]);
+
+function getSelectedSurveyValues() {
+  const result = {};
+  PROFILE_SURVEY_GROUPS.forEach(group => {
+    const selected = [...document.querySelectorAll(`#${group.target} .survey-chip[aria-pressed="true"]`)]
+      .map(button => button.dataset.value);
+    result[group.field] = group.multiple ? selected : (selected[0] || "");
+  });
+  result.bio = surveyBio?.value || "";
+  return result;
+}
+
+function renderSurveyOptions(preservedValue = getSelectedSurveyValues()) {
+  PROFILE_SURVEY_GROUPS.forEach(group => {
+    const container = document.getElementById(group.target);
+    if (!container) return;
+    const selected = group.multiple
+      ? new Set(preservedValue[group.field] || [])
+      : new Set([preservedValue[group.field]].filter(Boolean));
+    container.innerHTML = PROFILE_SURVEY_OPTIONS[group.field].map(value => {
+      const pressed = selected.has(value);
+      return `<button type="button" class="survey-chip${pressed ? " is-selected" : ""}"
+        data-value="${escapeHtml(value)}" aria-pressed="${pressed}">${escapeHtml(profileOptionLabel(value, lang))}</button>`;
+    }).join("");
+  });
+}
+
+function applyProfileSurveyCopy() {
+  const copy = {
+    profileSurveyKicker: "profile.kicker",
+    profileSurveyTitle: "profile.title",
+    profileSurveyIntro: "profile.intro",
+    surveyExperienceLabel: "profile.experience",
+    surveyRolesLabel: "profile.roles",
+    surveyMajorLabel: "profile.major",
+    surveyEquipmentLabel: "profile.equipment",
+    surveyStyleLabel: "profile.style",
+    surveyBioLabel: "profile.bio",
+    surveyRequired1: "profile.required",
+    surveyRequired2: "profile.required.multi",
+    surveyRequired3: "profile.required",
+    surveyOptional: "profile.optional.multi",
+    surveyRequired4: "profile.required",
+    surveyRequired5: "profile.required",
+    profileSurveyCancel: "profile.later",
+    profileSurveySubmit: "profile.submit",
+    profileSurveySuccessTitle: "profile.success.title",
+    profileSurveySuccessCopy: "profile.success.copy",
+    profileSurveySuccessClose: "profile.success.ok"
+  };
+  Object.entries(copy).forEach(([id, key]) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = t(key);
+  });
+  if (surveyBio) surveyBio.placeholder = t("profile.bio.ph");
+  renderSurveyOptions();
+  renderProfileSurveyEntry();
+}
+
+function renderProfileSurveyEntry() {
+  if (!profileSurveyBtn) return;
+  profileSurveyBtn.classList.toggle("hidden", !state.authed);
+  const verified = Boolean(currentProfileSurvey?.is_profile_verified);
+  profileSurveyBtn.classList.toggle("is-verified", verified);
+  const label = document.getElementById("profileSurveyBtnText");
+  if (label) label.textContent = t(verified ? "profile.entry.verified" : "profile.entry");
+  profileSurveyBtn.setAttribute("aria-label", t(verified ? "profile.entry.verified" : "profile.entry"));
+  const myPageSummary = document.getElementById("mypageProfileSummary");
+  if (myPageSummary) {
+    const displayName = currentProfileSurvey?.display_name
+      || currentUser?.user_metadata?.display_name
+      || currentUser?.email?.split("@")[0]
+      || (lang === "ko" ? "InFilm 구성원" : "InFilm member");
+    myPageSummary.innerHTML = state.authed
+      ? (verified
+        ? `<span class="mypage-profile-name">${escapeHtml(displayName)}</span>${verifiedProfileBadgeHtml(currentProfileSurvey, true)}`
+        : `<span>${escapeHtml(t("profile.prompt"))}</span><button type="button" class="micro-btn" data-open-profile-survey>${escapeHtml(t("profile.entry"))}</button>`)
+      : "";
+  }
+}
+
+function setSurveyFormValue(profile) {
+  const value = profile || {};
+  renderSurveyOptions({
+    experience_count: value.experience_count || "",
+    roles: value.roles || [],
+    major_background: value.major_background || "",
+    equipments: value.equipments || [],
+    collaboration_style: value.collaboration_style || ""
+  });
+  if (surveyBio) surveyBio.value = value.bio || "";
+  const bioCount = document.getElementById("surveyBioCount");
+  if (bioCount) bioCount.textContent = String((surveyBio?.value || "").length);
+  clearSurveyErrors();
+}
+
+function clearSurveyErrors() {
+  document.querySelectorAll(".survey-field.has-error").forEach(field => field.classList.remove("has-error"));
+  document.querySelectorAll(".survey-error").forEach(error => { error.textContent = ""; });
+  if (profileSurveyMessage) {
+    profileSurveyMessage.textContent = "";
+    profileSurveyMessage.className = "auth-message survey-submit-message";
+  }
+}
+
+function showSurveyErrors(errors) {
+  const errorTargets = {
+    experience_count: "surveyExperienceError",
+    roles: "surveyRolesError",
+    major_background: "surveyMajorError",
+    equipments: "surveyEquipmentError",
+    collaboration_style: "surveyStyleError",
+    bio: "surveyBioError"
+  };
+  Object.entries(errors).forEach(([field, code]) => {
+    const fieldset = document.querySelector(`[data-survey-field="${field}"]`);
+    fieldset?.classList.add("has-error");
+    const target = document.getElementById(errorTargets[field]);
+    if (target) target.textContent = t(code === "none_exclusive" ? "profile.error.equipment" : "profile.error.required");
+  });
+  document.querySelector(".survey-field.has-error")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function refreshOwnProfileSurvey() {
+  if (!state.authed) {
+    currentProfileSurvey = null;
+    renderProfileSurveyEntry();
+    return null;
+  }
+  const { data, error } = await sbClient.rpc("get_my_profile_survey");
+  if (error) {
+    console.warn("[profile-survey] profile lookup failed:", error.message);
+    currentProfileSurvey = null;
+  } else {
+    currentProfileSurvey = data || null;
+  }
+  renderProfileSurveyEntry();
+  return currentProfileSurvey;
+}
+
+async function fetchProjectHostProfiles(projectIds) {
+  const uniqueIds = [...new Set((projectIds || []).filter(Boolean))].slice(0, 100);
+  const missing = uniqueIds.filter(id => !hostProfileCache.has(id));
+  if (missing.length) {
+    const { data, error } = await sbClient.rpc("get_project_host_profiles", { p_project_ids: missing });
+    if (error) {
+      console.warn("[profile-survey] host summary lookup failed:", error.message);
+      return hostProfileCache;
+    }
+    const returned = new Set();
+    (data || []).forEach(profile => {
+      returned.add(profile.project_id);
+      hostProfileCache.set(profile.project_id, profile);
+    });
+    missing.forEach(id => {
+      if (!returned.has(id)) hostProfileCache.set(id, null);
+    });
+  }
+  return hostProfileCache;
+}
+
+function verifiedProfileBadgeHtml(profile, compact = false) {
+  if (!profile?.is_profile_verified) return "";
+  const equipmentText = (profile.equipments || []).map(value => profileOptionLabel(value, lang)).join(", ") || t("profile.tooltip.none");
+  const roleText = (profile.roles || []).map(value => profileOptionLabel(value, lang)).join(", ");
+  const label = compact ? t("profile.entry.verified") : t("profile.host.verified");
+  return `<span class="verified-profile" tabindex="0">
+    <span class="verified-profile-badge">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="m8 12 2.6 2.6L16.5 9"/></svg>
+      ${escapeHtml(label)}
+    </span>
+    <span class="verified-profile-tooltip" role="tooltip">
+      <strong>${escapeHtml(t("profile.tooltip.title"))}</strong>
+      <dl class="verified-tooltip-grid">
+        <dt>${escapeHtml(t("profile.tooltip.experience"))}</dt><dd>${escapeHtml(profileOptionLabel(profile.experience_count, lang))}</dd>
+        <dt>${escapeHtml(t("profile.tooltip.roles"))}</dt><dd>${escapeHtml(roleText)}</dd>
+        <dt>${escapeHtml(t("profile.tooltip.major"))}</dt><dd>${escapeHtml(profileOptionLabel(profile.major_background, lang))}</dd>
+        <dt>${escapeHtml(t("profile.tooltip.equipment"))}</dt><dd>${escapeHtml(equipmentText)}</dd>
+        <dt>${escapeHtml(t("profile.tooltip.style"))}</dt><dd>${escapeHtml(profileOptionLabel(profile.collaboration_style, lang))}</dd>
+        <dd class="verified-tooltip-bio">${escapeHtml(profile.bio || t("profile.tooltip.none"))}</dd>
+      </dl>
+    </span>
+  </span>`;
+}
+
+async function openProfileSurvey() {
+  if (!state.authed) {
+    authMode = "login";
+    updateAuthCopy();
+    authDialog.showModal();
+    return;
+  }
+  if (!currentProfileSurvey) await refreshOwnProfileSurvey();
+  setSurveyFormValue(currentProfileSurvey);
+  profileSurveyDialog?.showModal();
 }
 
 async function loadProfileNames(userIds) {
@@ -3051,3 +3411,20 @@ if (closingDateInput) {
     try { this.showPicker(); } catch (_) {}
   });
 }
+
+/* ── INIT ─────────────────────────────────────────────────── */
+applyLang("ko");  // also calls loadDiscoverProjects()
+
+// Restore session on page load and keep state in sync on every auth event.
+sbClient.auth.onAuthStateChange((event, session) => {
+  if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
+    if (currentUser?.id !== session.user.id) currentProfileSurvey = null;
+    state.authed = true;
+    currentUser  = session.user;
+    renderIdentity();
+    refreshOwnProfileSurvey();
+    loadDiscoverProjects();
+  } else if (event === "SIGNED_OUT") {
+    clearUserState();
+  }
+});
