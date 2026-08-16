@@ -60,6 +60,8 @@ const i18n = {
     "discover.banner.title2": "Discover the project that fits you.",
     "discover.banner.sub": "Choose your preferences and quickly find the right project.",
     "discover.footer": "More projects loading as crews publish their calls",
+    "discover.loadError": "Unable to load projects. Please refresh and try again.",
+    "discover.openError": "Load failed",
     "global.label": "01 - GLOBAL",
     "global.title": "Regional recruiting activity",
     "global.sub": "See where active projects are running across Korea.",
@@ -275,6 +277,8 @@ const i18n = {
     "discover.banner.title2": "당신에게 딱 맞는 현장을 발견하세요.",
     "discover.banner.sub": "지금 바로 조건을 선택하고 원하는 프로젝트를 빠르게 찾아보세요.",
     "discover.footer": "새 프로젝트가 계속 추가되고 있습니다",
+    "discover.loadError": "프로젝트를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.",
+    "discover.openError": "조회 실패",
     "global.label": "01 - GLOBAL",
     "global.title": "지역별 모집 현황",
     "global.sub": "한국 각 지역에서 활발히 진행 중인 프로젝트를 한눈에 확인하세요.",
@@ -2228,7 +2232,17 @@ async function loadDiscoverProjects() {
 
     if (loadId !== discoverProjectsLoadId) return;
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.error("[discover] projects query failed:", error.message);
+      projectList.innerHTML = `<p class="card-empty">${escapeHtml(t("discover.loadError"))}</p>`;
+      document.getElementById("openCount").textContent = t("discover.openError");
+      if (globalMapSummary) {
+        globalMapSummary.innerHTML = `<div class="global-summary-empty">${escapeHtml(t("discover.loadError"))}</div>`;
+      }
+      return;
+    }
+
+    if (!data || data.length === 0) {
       projectList.innerHTML = `<p class="card-empty">${lang === "ko" ? "등록된 프로젝트가 없습니다." : "No projects yet."}</p>`;
       document.getElementById("openCount").textContent = lang === "ko" ? "0개 모집 중" : "0 open";
       await renderWorldMapSection([]);
@@ -2358,10 +2372,11 @@ async function loadDiscoverProjects() {
   } catch (err) {
     console.error("[discover] load failed:", err);
     if (loadId !== discoverProjectsLoadId) return;
-    projectList.innerHTML = `<p class="card-empty">${lang === "ko" ? "프로젝트를 불러오지 못했습니다." : "Unable to load projects."}</p>`;
-    document.getElementById("openCount").textContent = lang === "ko" ? "0개 모집 중" : "0 open";
-    await renderWorldMapSection([]);
-    applyFilters();
+    projectList.innerHTML = `<p class="card-empty">${escapeHtml(t("discover.loadError"))}</p>`;
+    document.getElementById("openCount").textContent = t("discover.openError");
+    if (globalMapSummary) {
+      globalMapSummary.innerHTML = `<div class="global-summary-empty">${escapeHtml(t("discover.loadError"))}</div>`;
+    }
   }
 }
 

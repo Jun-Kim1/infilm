@@ -1,0 +1,81 @@
+name: Apply project discovery RLS hotfix
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-schema-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Validate database secret
+        shell: bash
+        run: |
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "Missing required secret: SUPABASE_DB_PASSWORD"
+            exit 1
+          fi
+
+      - name: Build masked database URL
+        shell: bash
+        run: |
+          encoded_password="$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')"
+          db_url="postgresql://postgres.fexwivtwuxsrjfrkqgam:${encoded_password}@aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres"
+          echo "::add-mask::$encoded_password"
+          echo "::add-mask::$db_url"
+          echo "SUPABASE_DB_URL=$db_url" >> "$GITHUB_ENV"
+
+      - name: Ensure PostgreSQL client
+        shell: bash
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install --yes postgresql-client
+          fi
+
+      - name: Diagnose authenticated visibility before migration
+        shell: bash
+        run: |
+          psql "$SUPABASE_DB_URL" --set ON_ERROR_STOP=1 --command "
+            begin;
+            set local role authenticated;
+            select count(*) as projects_visible_before from public.projects;
+            select count(*) as recruitment_rows_visible_before from public.recruitment_details;
+            rollback;
+          "
+
+      - name: Apply discovery RLS migration atomically
+        shell: bash
+        run: |
+          psql "$SUPABASE_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --single-transaction \
+            --file supabase/migrations/20260817_project_discovery_rls.sql
+
+      - name: Verify authenticated discovery access
+        shell: bash
+        run: |
+          visible_projects="$(psql "$SUPABASE_DB_URL" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+            begin;
+            set local role authenticated;
+            select count(*) from public.projects;
+            rollback;
+          " | grep -E '^[0-9]+$' | tail -n 1)"
+          if [ "$visible_projects" -lt 1 ]; then
+            echo "Authenticated users still cannot see open projects"
+            exit 1
+          fi
+          echo "Authenticated discovery verified: $visible_projects project(s) visible"
