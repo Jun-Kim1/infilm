@@ -169,10 +169,10 @@ const i18n = {
     "edit.project.title": "Edit project", "notif.project.deleted": "Project deleted.",
     "status.complete": "Completed",
     "ws.label": "WORKSPACE", "ws.back": "My Page",
-    "ws.crew.label": "CREW STATUS", "ws.crew.title": "Recruitment overview",
-    "ws.crew.target": "Planned crew", "ws.crew.joined": "Joined crew",
+    "ws.crew.label": "CREW STATUS", "ws.crew.title": "Team overview",
+    "ws.crew.target": "Team target", "ws.crew.joined": "Current members",
     "ws.crew.remaining": "Open positions", "ws.members.title": "Crew members",
-    "ws.members.empty": "No crew members have joined yet.",
+    "ws.members.empty": "No crew members found.", "role.project_creator": "Project creator",
     "ws.members.loadError": "Unable to load the crew overview.",
     "ws.tab.chat": "Chat", "ws.tab.calendar": "Calendar",
     "ws.chat.ph": "Write a message\u2026", "ws.chat.send": "Send",
@@ -362,10 +362,10 @@ const i18n = {
     "edit.project.title": "프로젝트 편집", "notif.project.deleted": "프로젝트가 삭제되었습니다.",
     "status.complete": "완료",
     "ws.label": "워크스페이스", "ws.back": "마이페이지",
-    "ws.crew.label": "CREW STATUS", "ws.crew.title": "모집 구성원 현황",
-    "ws.crew.target": "모집 목표", "ws.crew.joined": "현재 참여 인원",
-    "ws.crew.remaining": "남은 자리", "ws.members.title": "모집된 구성원",
-    "ws.members.empty": "아직 참여한 구성원이 없습니다.",
+    "ws.crew.label": "CREW STATUS", "ws.crew.title": "전체 구성원 현황",
+    "ws.crew.target": "전체 구성 목표", "ws.crew.joined": "현재 구성 인원",
+    "ws.crew.remaining": "남은 자리", "ws.members.title": "구성원 목록",
+    "ws.members.empty": "구성원을 찾을 수 없습니다.", "role.project_creator": "프로젝트 생성자",
     "ws.members.loadError": "구성원 현황을 불러오지 못했습니다.",
     "ws.tab.chat": "채팅", "ws.tab.calendar": "캘린더",
     "ws.chat.ph": "메시지를 입력하세요…", "ws.chat.send": "전송",
@@ -2294,7 +2294,8 @@ function renderWorkspaceOverview({ targetCount = 0, members = [] } = {}) {
   list.innerHTML = members.map(member => {
     const name = member.displayName || fallbackMemberName(member.userId);
     const initial = [...name.trim()][0]?.toUpperCase() || "?";
-    const role = member.roleName ? (t("role." + member.roleName) || member.roleName) : (lang === "ko" ? "구성원" : "Crew member");
+    const roleKey = member.roleName ? "role." + member.roleName : "";
+    const role = (roleKey && i18n[lang]?.[roleKey]) || member.roleName || (lang === "ko" ? "구성원" : "Crew member");
     return `<article class="ws-member">
       <span class="ws-member-avatar">${escapeHtml(initial)}</span>
       <span class="ws-member-copy">
@@ -2330,23 +2331,35 @@ async function loadWorkspaceOverview(projectId) {
     workspaceOverviewRpcAvailable = false;
   }
 
-  const [{ data: roles, error: rolesError }, { data: participants, error: participantsError }] = await Promise.all([
+  const [
+    { data: roles, error: rolesError },
+    { data: participants, error: participantsError },
+    { data: project, error: projectError }
+  ] = await Promise.all([
     sbClient.from("recruitment_details").select("headcount").eq("project_id", projectId),
     sbClient.from("project_participants")
       .select("user_id, role_name, status")
       .eq("project_id", projectId)
-      .or("status.eq.confirmed,status.is.null")
+      .or("status.eq.confirmed,status.is.null"),
+    sbClient.from("projects").select("creator_id").eq("id", projectId).single()
   ]);
   if (rolesError) throw rolesError;
   if (participantsError) throw participantsError;
+  if (projectError) throw projectError;
 
-  const targetCount = (roles || []).reduce((sum, role) => sum + Number(role.headcount || 1), 0);
-  await loadProfileNames((participants || []).map(participant => participant.user_id));
-  const members = (participants || []).map(participant => ({
+  const creatorId = project.creator_id;
+  const targetCount = 1 + (roles || []).reduce((sum, role) => sum + Number(role.headcount || 1), 0);
+  const participantRows = (participants || []).filter(participant => participant.user_id !== creatorId);
+  await loadProfileNames([creatorId, ...participantRows.map(participant => participant.user_id)]);
+  const members = [{
+    userId: creatorId,
+    displayName: workspaceProfileNames.get(creatorId),
+    roleName: "project_creator"
+  }, ...participantRows.map(participant => ({
     userId: participant.user_id,
     displayName: workspaceProfileNames.get(participant.user_id),
     roleName: participant.role_name
-  }));
+  }))];
   renderWorkspaceOverview({ targetCount, members });
 }
 
