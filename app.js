@@ -169,9 +169,19 @@ const i18n = {
     "edit.project.title": "Edit project", "notif.project.deleted": "Project deleted.",
     "status.complete": "Completed",
     "ws.label": "WORKSPACE", "ws.back": "My Page",
+    "ws.crew.label": "CREW STATUS", "ws.crew.title": "Recruitment overview",
+    "ws.crew.target": "Planned crew", "ws.crew.joined": "Joined crew",
+    "ws.crew.remaining": "Open positions", "ws.members.title": "Crew members",
+    "ws.members.empty": "No crew members have joined yet.",
+    "ws.members.loadError": "Unable to load the crew overview.",
     "ws.tab.chat": "Chat", "ws.tab.calendar": "Calendar",
     "ws.chat.ph": "Write a message\u2026", "ws.chat.send": "Send",
+    "ws.chat.loading": "Loading messages\u2026", "ws.chat.empty": "No messages yet. Start the conversation.",
+    "ws.chat.loadError": "Unable to load messages.", "ws.chat.sendError": "Failed to send the message.",
     "ws.event.ph": "Event title", "ws.event.add": "Add",
+    "ws.event.empty": "No events yet.", "ws.event.loadError": "Unable to load the calendar.",
+    "ws.event.saveError": "Failed to save the event.", "ws.event.saved": "Event added.",
+    "ws.accessError": "You do not have access to this workspace.",
     "ws.status.active": "Active", "ws.open": "Workspace",
     "modal.login.title": "Log in", "modal.signup.title": "Create account",
     "modal.email": "Email", "modal.pass": "Password", "modal.name": "Display name",
@@ -351,9 +361,19 @@ const i18n = {
     "edit.project.title": "프로젝트 편집", "notif.project.deleted": "프로젝트가 삭제되었습니다.",
     "status.complete": "완료",
     "ws.label": "워크스페이스", "ws.back": "마이페이지",
+    "ws.crew.label": "CREW STATUS", "ws.crew.title": "모집 구성원 현황",
+    "ws.crew.target": "모집 목표", "ws.crew.joined": "현재 참여 인원",
+    "ws.crew.remaining": "남은 자리", "ws.members.title": "모집된 구성원",
+    "ws.members.empty": "아직 참여한 구성원이 없습니다.",
+    "ws.members.loadError": "구성원 현황을 불러오지 못했습니다.",
     "ws.tab.chat": "채팅", "ws.tab.calendar": "캘린더",
     "ws.chat.ph": "메시지를 입력하세요…", "ws.chat.send": "전송",
+    "ws.chat.loading": "메시지를 불러오는 중…", "ws.chat.empty": "아직 메시지가 없습니다. 대화를 시작해 보세요.",
+    "ws.chat.loadError": "메시지를 불러오지 못했습니다.", "ws.chat.sendError": "메시지 전송에 실패했습니다.",
     "ws.event.ph": "일정 제목", "ws.event.add": "추가",
+    "ws.event.empty": "등록된 일정이 없습니다.", "ws.event.loadError": "캘린더를 불러오지 못했습니다.",
+    "ws.event.saveError": "일정 저장에 실패했습니다.", "ws.event.saved": "일정이 추가되었습니다.",
+    "ws.accessError": "이 워크스페이스에 접근할 권한이 없습니다.",
     "ws.status.active": "참여 중", "ws.open": "워크스페이스",
     "modal.login.title": "로그인", "modal.signup.title": "계정 만들기",
     "modal.email": "이메일", "modal.pass": "비밀번호", "modal.name": "표시 이름",
@@ -485,6 +505,7 @@ let authMode     = "login";
 let confirmAction = null;
 let currentUser  = null;
 let chatChannel  = null;
+let activeProjectId = null;
 let currentPreq  = { text: "", required: "none" };
 let discoverProjectsLoadId = 0;
 let pendingSignupDraft = null;
@@ -550,6 +571,10 @@ function applyLang(l) {
   updateTasteStep2Copy();
   loadRoleStats();
   loadDiscoverProjects();   // re-render cards with translated role/region labels
+  if (activeProjectId && document.getElementById("workspace")?.classList.contains("active")) {
+    loadWorkspaceOverview(activeProjectId).catch(error => console.error("[workspace] language refresh failed:", error));
+    loadWorkspaceEvents(activeProjectId).catch(error => console.error("[calendar] language refresh failed:", error));
+  }
 }
 
 function getTasteCategoryValue() {
@@ -1409,8 +1434,16 @@ confirmYes.addEventListener("click", async () => {
 let _editingProjectId = null;
 
 createdList.addEventListener("click", async event => {
+  const workspaceBtn = event.target.closest(".ws-open-btn");
   const editBtn   = event.target.closest(".edit-project-btn");
   const deleteBtn = event.target.closest(".delete-project-btn");
+
+  if (workspaceBtn) {
+    const li = workspaceBtn.closest(".list-item");
+    if (!li) return;
+    await loadWorkspace(li.dataset.projectId);
+    return;
+  }
 
   if (editBtn) {
     const li = editBtn.closest(".list-item");
@@ -2175,8 +2208,6 @@ sbClient.auth.onAuthStateChange((event, session) => {
 });
 
 /* ── WORKSPACE ───────────────────────────────────────────────────────── */
-let activeProjectId = null;
-
 /* ── CHAT HELPERS ─────────────────────────────────────────── */
 function escapeHtml(str) {
   return String(str)
@@ -2205,62 +2236,213 @@ function statusBadgeHtml(closingDate) {
     : `<span class="status-badge status-badge--closed">${lang === "ko" ? "종료" : "Closed"}</span>`;
 }
 
-function appendChatMsg(username, content) {
+const workspaceProfileNames = new Map();
+const seenChatMessageIds = new Set();
+let workspaceOverviewRpcAvailable = null;
+
+function fallbackMemberName(userId) {
+  if (userId === currentUser?.id) {
+    return currentUser.user_metadata?.display_name || currentUser.email?.split("@")[0] || "Me";
+  }
+  return `${lang === "ko" ? "구성원" : "Crew"} ${String(userId || "").slice(0, 6)}`.trim();
+}
+
+async function loadProfileNames(userIds) {
+  const uniqueIds = [...new Set((userIds || []).filter(Boolean))];
+  const missing = uniqueIds.filter(id => !workspaceProfileNames.has(id));
+  if (missing.length) {
+    const { data, error } = await sbClient
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", missing);
+    if (error) console.warn("[workspace] profile lookup failed:", error.message);
+    (data || []).forEach(profile => {
+      workspaceProfileNames.set(profile.id, profile.display_name || fallbackMemberName(profile.id));
+    });
+    missing.forEach(id => {
+      if (!workspaceProfileNames.has(id)) workspaceProfileNames.set(id, fallbackMemberName(id));
+    });
+  }
+  return workspaceProfileNames;
+}
+
+function renderWorkspaceOverview({ targetCount = 0, members = [] } = {}) {
+  const joinedCount = members.length;
+  const remainingCount = Math.max(0, targetCount - joinedCount);
+  const percent = targetCount > 0 ? Math.min(100, Math.round(joinedCount / targetCount * 100)) : 0;
+
+  document.getElementById("wsTargetCount").textContent = String(targetCount);
+  document.getElementById("wsJoinedCount").textContent = String(joinedCount);
+  document.getElementById("wsRemainingCount").textContent = String(remainingCount);
+  document.getElementById("wsCapacityText").textContent = `${joinedCount} / ${targetCount}`;
+  document.getElementById("wsMemberCount").textContent = String(joinedCount);
+  document.getElementById("wsProgressBar").style.width = `${percent}%`;
+
+  const list = document.getElementById("wsMemberList");
+  if (!members.length) {
+    list.innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.members.empty"))}</p>`;
+    return;
+  }
+  list.innerHTML = members.map(member => {
+    const name = member.displayName || fallbackMemberName(member.userId);
+    const initial = [...name.trim()][0]?.toUpperCase() || "?";
+    const role = member.roleName ? (t("role." + member.roleName) || member.roleName) : (lang === "ko" ? "구성원" : "Crew member");
+    return `<article class="ws-member">
+      <span class="ws-member-avatar">${escapeHtml(initial)}</span>
+      <span class="ws-member-copy">
+        <strong class="ws-member-name">${escapeHtml(name)}</strong>
+        <span class="ws-member-role">${escapeHtml(role)}</span>
+      </span>
+    </article>`;
+  }).join("");
+}
+
+function isMissingWorkspaceOverviewRpc(error) {
+  return error?.code === "PGRST202" || error?.code === "42883"
+    || (/get_workspace_overview/i.test(error?.message || "") && /not find|does not exist/i.test(error?.message || ""));
+}
+
+async function loadWorkspaceOverview(projectId) {
+  document.getElementById("wsMemberList").innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.chat.loading"))}</p>`;
+
+  if (workspaceOverviewRpcAvailable !== false) {
+    const { data, error } = await sbClient.rpc("get_workspace_overview", { p_project_id: projectId });
+    if (!error) {
+      workspaceOverviewRpcAvailable = true;
+      const members = (data?.members || []).map(member => ({
+        userId: member.user_id,
+        displayName: member.display_name,
+        roleName: member.role_name
+      }));
+      members.forEach(member => workspaceProfileNames.set(member.userId, member.displayName));
+      renderWorkspaceOverview({ targetCount: Number(data?.target_count || 0), members });
+      return;
+    }
+    if (!isMissingWorkspaceOverviewRpc(error)) throw error;
+    workspaceOverviewRpcAvailable = false;
+  }
+
+  const [{ data: roles, error: rolesError }, { data: participants, error: participantsError }] = await Promise.all([
+    sbClient.from("recruitment_details").select("headcount").eq("project_id", projectId),
+    sbClient.from("project_participants")
+      .select("user_id, role_name, status")
+      .eq("project_id", projectId)
+      .or("status.eq.confirmed,status.is.null")
+  ]);
+  if (rolesError) throw rolesError;
+  if (participantsError) throw participantsError;
+
+  const targetCount = (roles || []).reduce((sum, role) => sum + Number(role.headcount || 1), 0);
+  await loadProfileNames((participants || []).map(participant => participant.user_id));
+  const members = (participants || []).map(participant => ({
+    userId: participant.user_id,
+    displayName: workspaceProfileNames.get(participant.user_id),
+    roleName: participant.role_name
+  }));
+  renderWorkspaceOverview({ targetCount, members });
+}
+
+function appendChatMessage({ id, senderId, message, displayName }) {
+  if (id && seenChatMessageIds.has(id)) return;
+  if (id) seenChatMessageIds.add(id);
+
+  const empty = chatLog.querySelector(".ws-panel-state");
+  if (empty) empty.remove();
   const div = document.createElement("div");
-  div.className = "chat-msg";
-  div.innerHTML = `<span class="chat-author">${escapeHtml(username)}</span><p>${escapeHtml(content)}</p>`;
+  div.className = `chat-msg${senderId === currentUser?.id ? " is-mine" : ""}`;
+  const author = document.createElement("span");
+  author.className = "chat-author";
+  author.textContent = displayName || fallbackMemberName(senderId);
+  const body = document.createElement("p");
+  body.textContent = message;
+  div.append(author, body);
   chatLog.appendChild(div);
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
+async function appendChatRecord(record) {
+  await loadProfileNames([record.sender_id]);
+  appendChatMessage({
+    id: record.id,
+    senderId: record.sender_id,
+    message: record.message,
+    displayName: workspaceProfileNames.get(record.sender_id)
+  });
+}
+
 function subscribeChatChannel(projectId) {
-  if (chatChannel) {
-    sbClient.removeChannel(chatChannel);
-    chatChannel = null;
-  }
+  if (chatChannel) sbClient.removeChannel(chatChannel);
   chatChannel = sbClient
     .channel("chat:" + projectId)
     .on(
       "postgres_changes",
       { event: "INSERT", schema: "public", table: "chat_messages", filter: "project_id=eq." + projectId },
       payload => {
-        console.log("[chat] realtime INSERT payload:", payload.new);
-        appendChatMsg(payload.new.sender_id || "Guest", payload.new.message);
+        if (activeProjectId === projectId) appendChatRecord(payload.new).catch(error => console.error("[chat realtime]", error));
       }
     )
-    .subscribe();
+    .subscribe(status => {
+      if (status === "CHANNEL_ERROR") console.error("[chat] realtime channel error");
+    });
 }
 
-function renderWorkspaceChat(msgs) {
+async function loadWorkspaceChat(projectId) {
+  chatLog.innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.chat.loading"))}</p>`;
+  seenChatMessageIds.clear();
+  const { data, error } = await sbClient
+    .from("chat_messages")
+    .select("id, sender_id, message, created_at")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: true })
+    .limit(100);
+  if (error) {
+    console.error("[chat] history fetch failed:", error.message);
+    chatLog.innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.chat.loadError"))}</p>`;
+    return;
+  }
+  if (!data?.length) {
+    chatLog.innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.chat.empty"))}</p>`;
+    return;
+  }
   chatLog.innerHTML = "";
-  msgs.forEach(msg => {
-    const div = document.createElement("div");
-    div.className = "chat-msg";
-    div.innerHTML = `<span class="chat-author">${msg.author}</span><p>${msg.text}</p>`;
-    chatLog.appendChild(div);
-  });
-  chatLog.scrollTop = chatLog.scrollHeight;
+  await loadProfileNames(data.map(message => message.sender_id));
+  data.forEach(message => appendChatMessage({
+    id: message.id,
+    senderId: message.sender_id,
+    message: message.message,
+    displayName: workspaceProfileNames.get(message.sender_id)
+  }));
+}
+
+function formatEventDate(value) {
+  if (!value) return "–";
+  const date = new Date(`${value}T00:00:00Z`);
+  return new Intl.DateTimeFormat(lang === "ko" ? "ko-KR" : "en-US", {
+    month: "short", day: "numeric", weekday: "short", timeZone: "UTC"
+  }).format(date);
 }
 
 async function loadWorkspaceEvents(projectId) {
   const el = document.getElementById("eventList");
-  el.innerHTML = "";
+  el.innerHTML = `<li class="empty-item">${escapeHtml(t("ws.chat.loading"))}</li>`;
   const { data, error } = await sbClient
     .from("calendar_events")
-    .select("event_date, title")
+    .select("id, event_date, title")
     .eq("project_id", projectId)
     .order("event_date", { ascending: true });
-  if (error) { console.error("[events]", error.message); return; }
-  if (!data || data.length === 0) {
-    el.innerHTML = `<li class="empty-item">${lang === "ko" ? "등록된 일정이 없습니다." : "No events yet."}</li>`;
+  if (error) {
+    console.error("[events]", error.message);
+    el.innerHTML = `<li class="empty-item">${escapeHtml(t("ws.event.loadError"))}</li>`;
     return;
   }
-  data.forEach(ev => {
-    const li = document.createElement("li");
-    li.className = "event-item";
-    li.innerHTML = `<span class="event-date">${escapeHtml(ev.event_date)}</span><span>${escapeHtml(ev.title)}</span>`;
-    el.appendChild(li);
-  });
+  if (!data?.length) {
+    el.innerHTML = `<li class="empty-item">${escapeHtml(t("ws.event.empty"))}</li>`;
+    return;
+  }
+  el.innerHTML = data.map(event => `<li class="event-item">
+    <span class="event-date">${escapeHtml(formatEventDate(event.event_date))}</span>
+    <span>${escapeHtml(event.title)}</span>
+  </li>`).join("");
 }
 
 function switchWsTab(tab) {
@@ -2270,31 +2452,55 @@ function switchWsTab(tab) {
 }
 
 async function loadWorkspace(projectId) {
-  activeProjectId = projectId;
-  history.replaceState(null, "", `#workspace/${projectId}`);
-  // Fetch project title from Supabase
-  const { data: proj } = await sbClient
+  if (!projectId) return;
+  const { data: { session }, error: sessionError } = await sbClient.auth.getSession();
+  if (sessionError || !session?.user) {
+    authMode = "login"; updateAuthCopy(); authDialog.showModal();
+    return;
+  }
+  currentUser = session.user;
+
+  const { data: proj, error: projectError } = await sbClient
     .from("projects")
-    .select("title")
+    .select("title, creator_id")
     .eq("id", projectId)
     .maybeSingle();
-  document.getElementById("wsProjectTitle").textContent = proj?.title || projectId;
-  chatLog.innerHTML = "";
+  if (projectError || !proj) {
+    console.error("[workspace] project fetch failed:", projectError?.message);
+    showToast(t("ws.accessError"));
+    return;
+  }
+
+  if (proj.creator_id !== session.user.id) {
+    const { data: participation, error } = await sbClient
+      .from("project_participants")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("user_id", session.user.id)
+      .or("status.eq.confirmed,status.is.null")
+      .maybeSingle();
+    if (error || !participation) {
+      console.error("[workspace] access check failed:", error?.message);
+      showToast(t("ws.accessError"));
+      return;
+    }
+  }
+
+  activeProjectId = projectId;
+  history.replaceState(null, "", `#workspace/${projectId}`);
+  document.getElementById("wsProjectTitle").textContent = proj.title;
   switchWsTab("chat");
   setScreen("workspace");
-  // Fetch chat history from Supabase
-  const { data: msgs, error: msgsError } = await sbClient
-    .from("chat_messages")
-    .select("sender_id, message, created_at")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: true })
-    .limit(100);
-  console.log("[chat] history fetch → rows:", msgs?.length ?? 0, "error:", msgsError);
-  if (!msgsError && msgs && msgs.length > 0) {
-    msgs.forEach(m => appendChatMsg(m.sender_id || "Guest", m.message));
-  }
-  await loadWorkspaceEvents(projectId);
   subscribeChatChannel(projectId);
+  const results = await Promise.allSettled([
+    loadWorkspaceOverview(projectId),
+    loadWorkspaceChat(projectId),
+    loadWorkspaceEvents(projectId)
+  ]);
+  if (results[0].status === "rejected") {
+    console.error("[workspace] overview failed:", results[0].reason);
+    document.getElementById("wsMemberList").innerHTML = `<p class="ws-panel-state">${escapeHtml(t("ws.members.loadError"))}</p>`;
+  }
 }
 
 document.getElementById("wsBackBtn").addEventListener("click", () => {
@@ -2302,6 +2508,7 @@ document.getElementById("wsBackBtn").addEventListener("click", () => {
     sbClient.removeChannel(chatChannel);
     chatChannel = null;
   }
+  activeProjectId = null;
   history.replaceState(null, "", "#mypage");
   setScreen("mypage");
 });
@@ -2310,26 +2517,52 @@ document.querySelectorAll(".ws-tab").forEach(tab => {
   tab.addEventListener("click", () => switchWsTab(tab.dataset.tab));
 });
 
+chatForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const message = chatInput.value.trim();
+  if (!message || !activeProjectId || !currentUser) return;
+
+  const submitBtn = chatForm.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  const { data, error } = await sbClient.from("chat_messages")
+    .insert({ project_id: activeProjectId, sender_id: currentUser.id, message })
+    .select("id, sender_id, message, created_at")
+    .single();
+  submitBtn.disabled = false;
+  if (error) {
+    console.error("[chat] send failed:", error.message);
+    showToast(t("ws.chat.sendError"));
+    return;
+  }
+  chatInput.value = "";
+  await appendChatRecord(data);
+});
+
 document.getElementById("eventForm").addEventListener("submit", async event => {
   event.preventDefault();
   const dateEl  = document.getElementById("eventDate");
   const titleEl = document.getElementById("eventTitle");
-  const date  = dateEl.value || null;
+  const date  = dateEl.value;
   const title = titleEl.value.trim();
-  if (!title || !activeProjectId) return;
+  if (!date || !title || !activeProjectId || !currentUser) return;
+  const submitBtn = event.currentTarget.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
   const { error } = await sbClient.from("calendar_events").insert({
     project_id: activeProjectId,
     event_date: date,
-    title:      title
+    title,
+    created_by: currentUser.id
   });
+  submitBtn.disabled = false;
   if (error) {
     console.error("[calendar] insert failed:", error.message);
-    showToast(lang === "ko" ? "일정 저장 실패" : "Failed to save event");
+    showToast(t("ws.event.saveError"));
     return;
   }
   dateEl.value  = "";
   titleEl.value = "";
   await loadWorkspaceEvents(activeProjectId);
+  showToast(t("ws.event.saved"));
 });
 
 document.getElementById("joinedList").addEventListener("click", event => {
