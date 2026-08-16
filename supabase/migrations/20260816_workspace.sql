@@ -1,5 +1,27 @@
 begin;
 
+-- Replace the legacy bigint chat table only when it is empty. If legacy rows
+-- exist, stop instead of discarding data so they can be migrated explicitly.
+do $$
+declare
+  v_project_id_type text;
+begin
+  select c.udt_name
+    into v_project_id_type
+    from information_schema.columns c
+   where c.table_schema = 'public'
+     and c.table_name = 'chat_messages'
+     and c.column_name = 'project_id';
+
+  if v_project_id_type is not null and v_project_id_type <> 'uuid' then
+    if exists (select 1 from public.chat_messages limit 1) then
+      raise exception 'Legacy chat_messages contains rows; migrate them before changing project_id to uuid';
+    end if;
+    drop table public.chat_messages;
+  end if;
+end;
+$$;
+
 create table if not exists public.chat_messages (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
