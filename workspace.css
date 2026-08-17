@@ -144,7 +144,26 @@
   gap: 2px;
 }
 
+.ws-member-identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.ws-member-identity .verified-profile-badge {
+  min-height: 20px;
+  padding: 2px 6px;
+  font-size: 9px;
+}
+
+.ws-member-identity .verified-profile-tooltip {
+  top: calc(100% + 7px);
+  left: 0;
+}
+
 .ws-member-name {
+  min-width: 0;
   overflow: hidden;
   color: var(--text-1);
   font-size: 13px;

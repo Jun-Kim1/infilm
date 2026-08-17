@@ -251,6 +251,7 @@ const i18n = {
     "profile.required": "Required", "profile.required.multi": "Required · Select multiple",
     "profile.optional.multi": "Optional · Select multiple", "profile.later": "Later",
     "profile.submit": "Get verified badge", "profile.saving": "Saving profile…",
+    "profile.update": "Update profile", "profile.updating": "Updating profile…",
     "profile.bio.ph": "Tell crews what you want to create and how you work.",
     "profile.error.required": "Please complete this question.",
     "profile.error.equipment": "‘None’ cannot be selected with other equipment.",
@@ -258,6 +259,8 @@ const i18n = {
     "profile.error.migration": "Profile verification is not ready yet. Apply the Supabase migration first.",
     "profile.success.title": "Verified badge earned!",
     "profile.success.copy": "Your projects now show you as a trusted host.",
+    "profile.updated.title": "Profile updated",
+    "profile.updated.copy": "Your verified profile now shows the latest information.",
     "profile.success.ok": "Done", "profile.host.verified": "Verified profile host",
     "profile.tooltip.title": "Verified film profile", "profile.tooltip.experience": "Experience",
     "profile.tooltip.roles": "Roles", "profile.tooltip.major": "Background",
@@ -469,6 +472,7 @@ const i18n = {
     "profile.required": "필수", "profile.required.multi": "필수 · 복수 선택",
     "profile.optional.multi": "선택 · 복수 선택", "profile.later": "나중에",
     "profile.submit": "인증 뱃지 받기", "profile.saving": "프로필 저장 중…",
+    "profile.update": "업데이트", "profile.updating": "프로필 업데이트 중…",
     "profile.bio.ph": "함께 만들고 싶은 영화와 각오를 적어주세요.",
     "profile.error.required": "이 문항을 입력해 주세요.",
     "profile.error.equipment": "‘없음’은 다른 장비와 함께 선택할 수 없습니다.",
@@ -476,6 +480,8 @@ const i18n = {
     "profile.error.migration": "프로필 인증 기능 준비가 필요합니다. Supabase 마이그레이션을 먼저 적용해 주세요.",
     "profile.success.title": "인증 뱃지 획득!",
     "profile.success.copy": "이제 프로젝트에서 신뢰할 수 있는 호스트로 표시됩니다.",
+    "profile.updated.title": "프로필 업데이트 완료",
+    "profile.updated.copy": "인증 프로필에 최신 정보가 반영되었습니다.",
     "profile.success.ok": "확인", "profile.host.verified": "인증된 프로필 호스트",
     "profile.tooltip.title": "인증된 영화 프로필", "profile.tooltip.experience": "경험",
     "profile.tooltip.roles": "역할", "profile.tooltip.major": "배경",
@@ -1312,8 +1318,9 @@ profileSurveyForm?.addEventListener("submit", async event => {
   }
 
   const submitButton = document.getElementById("profileSurveySubmit");
+  const wasVerified = Boolean(currentProfileSurvey?.is_profile_verified);
   submitButton.disabled = true;
-  submitButton.textContent = t("profile.saving");
+  submitButton.textContent = t(wasVerified ? "profile.updating" : "profile.saving");
   try {
     const value = validation.value;
     const { data, error } = await sbClient.rpc("save_profile_survey", {
@@ -1330,6 +1337,8 @@ profileSurveyForm?.addEventListener("submit", async event => {
     hostProfileCache = new Map();
     renderProfileSurveyEntry();
     profileSurveyDialog.close();
+    document.getElementById("profileSurveySuccessTitle").textContent = t(wasVerified ? "profile.updated.title" : "profile.success.title");
+    document.getElementById("profileSurveySuccessCopy").textContent = t(wasVerified ? "profile.updated.copy" : "profile.success.copy");
     profileSurveySuccessDialog?.showModal();
     await loadDiscoverProjects();
   } catch (error) {
@@ -1339,7 +1348,7 @@ profileSurveyForm?.addEventListener("submit", async event => {
     profileSurveyMessage.classList.add("auth-message--error");
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = t("profile.submit");
+    renderProfileSurveySubmissionState();
   }
 });
 
@@ -2353,12 +2362,12 @@ async function loadDiscoverProjects() {
         <div class="card-top">
           <div class="card-top-left">
             <span class="card-num">${String(idx + 1).padStart(2, "0")}</span>
+            ${hostVerified ? verifiedProfileBadgeHtml(hostProfile, true) : ""}
             ${ownerBadgeHtml}
           </div>
           ${statusBadgeHtml(proj.closing_date)}
         </div>
         <h3 class="card-title">${escapeHtml(proj.title)}</h3>
-        ${hostVerified ? `<div class="card-host-row"><span class="pdm-host-name">${escapeHtml(hostProfile.display_name || (lang === "ko" ? "프로젝트 호스트" : "Project host"))}</span>${verifiedProfileBadgeHtml(hostProfile)}</div>` : ""}
         <div class="card-meta">
           <span>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -2481,9 +2490,6 @@ function applyProfileSurveyCopy() {
     surveyRequired4: "profile.required",
     surveyRequired5: "profile.required",
     profileSurveyCancel: "profile.later",
-    profileSurveySubmit: "profile.submit",
-    profileSurveySuccessTitle: "profile.success.title",
-    profileSurveySuccessCopy: "profile.success.copy",
     profileSurveySuccessClose: "profile.success.ok"
   };
   Object.entries(copy).forEach(([id, key]) => {
@@ -2493,6 +2499,13 @@ function applyProfileSurveyCopy() {
   if (surveyBio) surveyBio.placeholder = t("profile.bio.ph");
   renderSurveyOptions();
   renderProfileSurveyEntry();
+  renderProfileSurveySubmissionState();
+}
+
+function renderProfileSurveySubmissionState() {
+  const submitButton = document.getElementById("profileSurveySubmit");
+  if (!submitButton || submitButton.disabled) return;
+  submitButton.textContent = t(currentProfileSurvey?.is_profile_verified ? "profile.update" : "profile.submit");
 }
 
 function renderProfileSurveyEntry() {
@@ -2530,6 +2543,7 @@ function setSurveyFormValue(profile) {
   const bioCount = document.getElementById("surveyBioCount");
   if (bioCount) bioCount.textContent = String((surveyBio?.value || "").length);
   clearSurveyErrors();
+  renderProfileSurveySubmissionState();
 }
 
 function clearSurveyErrors() {
@@ -2677,7 +2691,10 @@ function renderWorkspaceOverview({ targetCount = 0, members = [] } = {}) {
     return `<article class="ws-member">
       <span class="ws-member-avatar">${escapeHtml(initial)}</span>
       <span class="ws-member-copy">
-        <strong class="ws-member-name">${escapeHtml(name)}</strong>
+        <span class="ws-member-identity">
+          <strong class="ws-member-name">${escapeHtml(name)}</strong>
+          ${verifiedProfileBadgeHtml(member, true)}
+        </span>
         <span class="ws-member-role">${escapeHtml(role)}</span>
       </span>
     </article>`;
@@ -2699,7 +2716,14 @@ async function loadWorkspaceOverview(projectId) {
       const members = (data?.members || []).map(member => ({
         userId: member.user_id,
         displayName: member.display_name,
-        roleName: member.role_name
+        roleName: member.role_name,
+        is_profile_verified: Boolean(member.is_profile_verified),
+        experience_count: member.experience_count,
+        roles: member.roles || [],
+        major_background: member.major_background,
+        equipments: member.equipments || [],
+        collaboration_style: member.collaboration_style,
+        bio: member.bio
       }));
       members.forEach(member => workspaceProfileNames.set(member.userId, member.displayName));
       renderWorkspaceOverview({ targetCount: Number(data?.target_count || 0), members });

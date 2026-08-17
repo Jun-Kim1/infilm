@@ -54,6 +54,10 @@ jobs:
             --set ON_ERROR_STOP=1 \
             --single-transaction \
             --file supabase/migrations/20260816_profile_survey.sql
+          psql "$SUPABASE_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --single-transaction \
+            --file supabase/migrations/20260817_workspace_member_badges.sql
 
       - name: Verify profile survey database objects
         shell: bash
@@ -74,3 +78,15 @@ jobs:
             exit 1
           fi
           echo "Profile survey schema verified"
+
+      - name: Verify workspace badge payload
+        shell: bash
+        run: |
+          function_sql="$(psql "$SUPABASE_DB_URL" --set ON_ERROR_STOP=1 --tuples-only --no-align --command "
+            select pg_get_functiondef('public.get_workspace_overview(uuid)'::regprocedure);
+          ")"
+          if [[ "$function_sql" != *"is_profile_verified"* ]]; then
+            echo "Workspace overview does not include profile verification data"
+            exit 1
+          fi
+          echo "Workspace badge payload verified"

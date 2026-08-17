@@ -2437,10 +2437,10 @@ input[type="date"] {
   align-items: center;
   gap: 7px;
   padding: 0 13px;
-  border: 1px solid rgba(232,160,32,.34);
+  border: 1px solid var(--border-2);
   border-radius: 999px;
-  background: rgba(232,160,32,.08);
-  color: var(--cta);
+  background: transparent;
+  color: var(--text-2);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -2448,13 +2448,27 @@ input[type="date"] {
 }
 
 .profile-survey-entry:hover {
-  border-color: rgba(232,160,32,.75);
-  background: rgba(232,160,32,.14);
+  border-color: #555;
+  background: rgba(255,255,255,.04);
+  color: var(--text-1);
 }
 
 .profile-survey-entry.is-verified {
   color: #f6c866;
+  border-color: rgba(232,160,32,.5);
   background: linear-gradient(135deg, rgba(232,160,32,.18), rgba(232,160,32,.07));
+}
+
+.profile-survey-entry .profile-survey-check {
+  opacity: 0;
+  transform: scale(.7);
+  transform-origin: center;
+  transition: opacity 160ms, transform 160ms;
+}
+
+.profile-survey-entry.is-verified .profile-survey-check {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .profile-survey-modal {
@@ -2715,7 +2729,6 @@ input[type="date"] {
 }
 
 .project-card--verified:hover { border-color: rgba(232,160,32,.8); }
-.card-host-row { min-height: 24px; display: flex; align-items: center; }
 .pdm-host { margin: 8px 0 12px; }
 .pdm-host:empty { display: none; }
 .pdm-host-name { margin-right: 6px; color: var(--text-2); font-size: 12px; }
